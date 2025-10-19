@@ -181,17 +181,9 @@ function toCsv(rows, includeDogInfo=true){
   return lines.join('\n');
 }
 
-// Minimal ZIP (STORE method, no compression) — creates a Blob ZIP with given files
-// files: [{name: 'dogs.json', data: Uint8Array}]
-function crc32(buf){
-  let c=~0>>>0;
-  for(let i=0;i<buf.length;i++){
-    c = (c>>>8) ^ CRC32_TABLE[(c ^ buf[i]) & 0xFF];
-  }
-  return (~c)>>>0;
-}
+// Minimal ZIP (STORE method, no compression)
+function crc32(buf){ let c=~0>>>0; for(let i=0;i<buf.length;i++){ c=(c>>>8)^CRC32_TABLE[(c^buf[i])&0xFF]; } return (~c)>>>0; }
 const CRC32_TABLE = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=((c&1)?(0xEDB88320^(c>>>1)):(c>>>1)); t[n]=c>>>0; } return t; })();
-
 function strToU8(s){ return new TextEncoder().encode(s); }
 function u32le(n){ const a=new Uint8Array(4); a[0]=n&255; a[1]=(n>>>8)&255; a[2]=(n>>>16)&255; a[3]=(n>>>24)&255; return a; }
 function u16le(n){ const a=new Uint8Array(2); a[0]=n&255; a[1]=(n>>>8)&255; return a; }
@@ -207,22 +199,18 @@ function createZip(files){
     const crc = crc32(data);
     const size = data.length;
 
-    // Local file header
     const LFH = [
-      u32le(0x04034b50), // signature
-      u16le(20), u16le(0), u16le(0), // version, flags, method=0 (store)
-      u16le(0), u16le(0),            // time/date (0)
+      u32le(0x04034b50), u16le(20), u16le(0), u16le(0),
+      u16le(0), u16le(0),
       u32le(crc), u32le(size), u32le(size),
-      u16le(nameU8.length), u16le(0) // name len, extra len
+      u16le(nameU8.length), u16le(0)
     ];
     chunks.push(...LFH, nameU8, data);
 
-    // Remember central directory info
     fileRecs.push({ nameU8, crc, size, offset });
     offset += LFH.reduce((s,a)=>s+a.length,0) + nameU8.length + size;
   }
 
-  // Central directory
   const cdChunks = [];
   let cdSize = 0;
   for (const rec of fileRecs){
@@ -254,7 +242,7 @@ function initApp(){
   // Defaults
   if ($('#dtInput')) $('#dtInput').value = todayLocalDatetimeValue();
 
-  // Dogs
+  // Dogs — Add
   on($('#addDogBtn'),'click', ()=>{
     const name=($('#newDogName')?.value||'').trim();
     const owner=($('#newOwner')?.value||'').trim();
@@ -268,14 +256,49 @@ function initApp(){
     if($('#newBreed')) $('#newBreed').value='';
     renderDogs(); renderEntries(); renderChart();
   });
+
+  // Dogs — Delete (custom modal instead of confirm)
+  const confirmModal = $('#confirmModal');
+  const confirmDogName = $('#confirmDogName');
+  const confirmDeleteBtn = $('#confirmDeleteBtn');
+  const confirmCancelBtn = $('#confirmCancelBtn');
+  let pendingDeleteDogId = null;
+
   on($('#deleteDogBtn'),'click', ()=>{
-    const dogId=$('#dogSelect')?.value; if(!dogId) return;
-    const dog=getDog(dogId); if(!dog) return;
-    if(!confirm(`Delete "${dog.name}" and ALL its entries?`)) return;
-    dogs=dogs.filter(d=>d.id!==dogId); entries=entries.filter(e=>e.dogId!==dogId);
-    save(LS_KEYS.dogs, dogs); save(LS_KEYS.entries, entries);
+    const dogId=$('#dogSelect')?.value;
+    const dog=dogId ? getDog(dogId) : null;
+    if(!dogId || !dog) return alert('Select a dog first.');
+    pendingDeleteDogId = dogId;
+    if (confirmDogName) confirmDogName.textContent = dog.name;
+    if (confirmModal) confirmModal.hidden = false;
+  });
+
+  on(confirmCancelBtn,'click', ()=>{
+    pendingDeleteDogId = null;
+    if (confirmModal) confirmModal.hidden = true;
+  });
+
+  on(confirmModal,'click', (e)=>{
+    if (e.target === confirmModal) { // click outside card
+      pendingDeleteDogId = null;
+      confirmModal.hidden = true;
+    }
+  });
+
+  on(confirmDeleteBtn,'click', ()=>{
+    const dogId = pendingDeleteDogId;
+    if (!dogId) { if (confirmModal) confirmModal.hidden = true; return; }
+    // remove dog + its entries
+    dogs = dogs.filter(d => d.id !== dogId);
+    entries = entries.filter(e => e.dogId !== dogId);
+    save(LS_KEYS.dogs, dogs);
+    save(LS_KEYS.entries, entries);
+    pendingDeleteDogId = null;
+    if (confirmModal) confirmModal.hidden = true;
     renderDogs(); renderEntries(); renderChart();
   });
+
+  // Dog select change
   on($('#dogSelect'),'change', ()=>{ renderEntries(); renderChart(); });
 
   // Entries add / duplicate
@@ -292,6 +315,7 @@ function initApp(){
     if($('#weightInput')) $('#weightInput').value=''; if($('#notesInput')) $('#notesInput').value=''; if($('#dtInput')) $('#dtInput').value=todayLocalDatetimeValue();
     renderEntries(); renderChart();
   });
+
   on($('#dupLastBtn'),'click', ()=>{
     const dogId=$('#dogSelect')?.value; if(!dogId) return alert('Select a dog first.');
     const rows=entries.filter(e=>e.dogId===dogId).sort((a,b)=>b.dtISO.localeCompare(a.dtISO));

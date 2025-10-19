@@ -78,14 +78,11 @@ installBtn?.addEventListener('click', async () => {
     return;
   }
   deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
+  await deferredPrompt.userChoice;
   deferredPrompt = null;
   installBtn.style.display = 'none';
 });
-
-window.addEventListener('appinstalled', () => {
-  if (installBtn) installBtn.style.display = 'none';
-});
+window.addEventListener('appinstalled', () => { if (installBtn) installBtn.style.display = 'none'; });
 
 // ----- Utilities -----------------------------------------------------------
 function todayLocalDatetimeValue() {
@@ -159,7 +156,9 @@ deleteDogBtn.addEventListener('click', () => {
   renderDogs(); renderEntries(); renderChart();
 });
 
-// ----- Entries -------------------------------------------------------------
+// ----- Entries (with inline editing) --------------------------------------
+let editingId = null; // which entry id is in edit mode
+
 function renderEntries() {
   const dogId = dogSelect.value;
   const filtered = dogId ? entries.filter(e => e.dogId === dogId) : [];
@@ -172,27 +171,98 @@ function renderEntries() {
     const d = getDog(e.dogId);
     const tr = document.createElement('tr');
 
-    const tdDT = document.createElement('td');
-    tdDT.textContent = e.dtISO.replace('T', ' ').slice(0,16);
-    tr.appendChild(tdDT);
+    if (editingId === e.id) {
+      // --- EDIT MODE ROW ---
+      // Date/time editor
+      const tdDT = document.createElement('td');
+      const dt = document.createElement('input');
+      dt.type = 'datetime-local';
+      dt.value = (e.dtISO || '').slice(0,16);
+      tdDT.appendChild(dt); tr.appendChild(tdDT);
 
-    const tdDog = document.createElement('td'); tdDog.textContent = d?.name ?? ''; tr.appendChild(tdDog);
-    const tdOwner = document.createElement('td'); tdOwner.textContent = d?.owner ?? ''; tr.appendChild(tdOwner);
-    const tdBreed = document.createElement('td'); tdBreed.textContent = d?.breed ?? ''; tr.appendChild(tdBreed);
+      // Dog (read-only name)
+      const tdDog = document.createElement('td'); tdDog.textContent = d?.name ?? ''; tr.appendChild(tdDog);
+      const tdOwner = document.createElement('td'); tdOwner.textContent = d?.owner ?? ''; tr.appendChild(tdOwner);
+      const tdBreed = document.createElement('td'); tdBreed.textContent = d?.breed ?? ''; tr.appendChild(tdBreed);
 
-    const tdWeight = document.createElement('td'); tdWeight.textContent = formatKg(e.weight); tr.appendChild(tdWeight);
+      // Weight editor
+      const tdWeight = document.createElement('td');
+      const w = document.createElement('input');
+      w.type = 'number'; w.step = '0.01'; w.inputMode = 'decimal';
+      w.value = formatKg(e.weight);
+      tdWeight.appendChild(w); tr.appendChild(tdWeight);
 
-    const tdNotes = document.createElement('td'); tdNotes.textContent = e.notes || ''; tr.appendChild(tdNotes);
+      // Notes editor
+      const tdNotes = document.createElement('td');
+      const n = document.createElement('input');
+      n.type = 'text'; n.value = e.notes || '';
+      tdNotes.appendChild(n); tr.appendChild(tdNotes);
 
-    const tdDel = document.createElement('td');
-    const btn = document.createElement('button'); btn.textContent = 'Delete'; btn.className = 'danger';
-    btn.addEventListener('click', () => {
-      if (!confirm('Delete this entry?')) return;
-      entries = entries.filter(x => x.id !== e.id);
-      save(LS_KEYS.entries, entries);
-      renderEntries(); renderChart();
-    });
-    tdDel.appendChild(btn); tr.appendChild(tdDel);
+      // Actions: Save / Cancel
+      const tdAct = document.createElement('td');
+      const saveBtn = document.createElement('button'); saveBtn.textContent = 'Save';
+      const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.marginLeft = '6px';
+      tdAct.appendChild(saveBtn); tdAct.appendChild(cancelBtn); tr.appendChild(tdAct);
+
+      saveBtn.addEventListener('click', () => {
+        const dtVal = dt.value;
+        if (!dtVal) return alert('Enter date & time.');
+        const weight = parseFloat(String(w.value).replace(',', '.'));
+        if (!isFinite(weight)) return alert('Enter a numeric weight in kg (e.g., 21.30).');
+
+        // Apply updates
+        const idx = entries.findIndex(x => x.id === e.id);
+        if (idx !== -1) {
+          entries[idx] = {
+            ...entries[idx],
+            dtISO: dtVal.length === 16 ? dtVal + ':00' : dtVal,
+            weight: Number(weight.toFixed(2)),
+            notes: n.value.trim()
+          };
+          save(LS_KEYS.entries, entries);
+        }
+        editingId = null;
+        renderEntries(); renderChart();
+      });
+
+      cancelBtn.addEventListener('click', () => {
+        editingId = null;
+        renderEntries();
+      });
+
+    } else {
+      // --- READ MODE ROW ---
+      const tdDT = document.createElement('td');
+      tdDT.textContent = e.dtISO.replace('T', ' ').slice(0,16);
+      tr.appendChild(tdDT);
+
+      const tdDog = document.createElement('td'); tdDog.textContent = d?.name ?? ''; tr.appendChild(tdDog);
+      const tdOwner = document.createElement('td'); tdOwner.textContent = d?.owner ?? ''; tr.appendChild(tdOwner);
+      const tdBreed = document.createElement('td'); tdBreed.textContent = d?.breed ?? ''; tr.appendChild(tdBreed);
+
+      const tdWeight = document.createElement('td'); tdWeight.textContent = formatKg(e.weight); tr.appendChild(tdWeight);
+
+      const tdNotes = document.createElement('td'); tdNotes.textContent = e.notes || ''; tr.appendChild(tdNotes);
+
+      const tdAct = document.createElement('td');
+      const editBtn = document.createElement('button'); editBtn.textContent = 'Edit';
+      const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.className = 'danger';
+      delBtn.style.marginLeft = '6px';
+      tdAct.appendChild(editBtn); tdAct.appendChild(delBtn); tr.appendChild(tdAct);
+
+      editBtn.addEventListener('click', () => {
+        editingId = e.id;
+        renderEntries();
+      });
+
+      delBtn.addEventListener('click', () => {
+        if (!confirm('Delete this entry?')) return;
+        entries = entries.filter(x => x.id !== e.id);
+        save(LS_KEYS.entries, entries);
+        renderEntries(); renderChart();
+      });
+    }
 
     entriesBody.appendChild(tr);
   }
@@ -220,13 +290,11 @@ addEntryBtn.addEventListener('click', () => {
   renderEntries(); renderChart();
 });
 
-// >>> NEW: Duplicate last entry --------------------------------------------
+// Duplicate last entry
 dupLastBtn?.addEventListener('click', () => {
   const dogId = dogSelect.value;
   if (!dogId) return alert('Select a dog first.');
-  const rows = entries
-    .filter(e => e.dogId === dogId)
-    .sort((a,b)=> b.dtISO.localeCompare(a.dtISO)); // newest first
+  const rows = entries.filter(e => e.dogId === dogId).sort((a,b)=> b.dtISO.localeCompare(a.dtISO));
   if (rows.length === 0) return alert('No previous entry to duplicate.');
 
   const last = rows[0];

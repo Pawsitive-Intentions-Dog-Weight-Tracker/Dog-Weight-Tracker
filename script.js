@@ -61,6 +61,15 @@ const entriesTitle = document.querySelector('#entriesTitle');
 const chartCanvas = document.querySelector('#chart');
 const dupLastBtn = document.querySelector('#dupLastBtn');
 
+const aboutBtn = document.querySelector('#aboutBtn');
+const aboutModal = document.querySelector('#aboutModal');
+const aboutClose = document.querySelector('#aboutClose');
+
+aboutBtn?.addEventListener('click', ()=> aboutModal.hidden = false);
+aboutClose?.addEventListener('click', ()=> aboutModal.hidden = true);
+aboutModal?.addEventListener('click', (e)=> { if(e.target===aboutModal) aboutModal.hidden = true; });
+
+
 // Install prompt
 let deferredPrompt = null;
 const installBtn = document.querySelector('#installBtn');

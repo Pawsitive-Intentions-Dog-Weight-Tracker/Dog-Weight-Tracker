@@ -18,17 +18,29 @@
     <!-- Dog management -->
     <section class="card">
       <h2>Dogs</h2>
+
       <div class="row">
         <label for="dogSelect">Select dog</label>
         <select id="dogSelect"></select>
         <button id="deleteDogBtn" class="danger" title="Remove dog and all its entries">Delete Dog</button>
       </div>
 
+      <div class="grid2">
+        <div class="row">
+          <label for="newDogName">Dog name</label>
+          <input id="newDogName" type="text" placeholder="e.g. Raq" />
+        </div>
+        <div class="row">
+          <label for="newOwner">Owner surname</label>
+          <input id="newOwner" type="text" placeholder="e.g. Yoxall" />
+        </div>
+      </div>
       <div class="row">
-        <label for="newDogName">Add a new dog</label>
-        <input id="newDogName" type="text" placeholder="e.g. Raq" />
+        <label for="newBreed">Breed</label>
+        <input id="newBreed" type="text" placeholder="e.g. Border Collie" />
         <button id="addDogBtn">Add Dog</button>
       </div>
+      <p class="hint">Tip: The selector will show “Dog Name — Owner (Breed)”.</p>
     </section>
 
     <!-- Add a measurement -->
@@ -36,12 +48,12 @@
       <h2>Add Weight</h2>
       <div class="grid2">
         <div class="row">
-          <label for="dateInput">Date</label>
-          <input id="dateInput" type="date" />
+          <label for="dtInput">Date &amp; time</label>
+          <input id="dtInput" type="datetime-local" />
         </div>
         <div class="row">
           <label for="weightInput">Weight (kg)</label>
-          <input id="weightInput" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 21.3" />
+          <input id="weightInput" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 21.30" />
         </div>
       </div>
       <div class="row">
@@ -74,7 +86,10 @@
         <table id="entriesTable">
           <thead>
             <tr>
-              <th>Date</th>
+              <th>Date &amp; time</th>
+              <th>Dog</th>
+              <th>Owner</th>
+              <th>Breed</th>
               <th>Weight (kg)</th>
               <th>Notes</th>
               <th></th>
@@ -91,7 +106,6 @@
   </footer>
 
   <script>
-    // Register service worker (for offline)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js').catch(console.error);

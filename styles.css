@@ -1,24 +1,91 @@
-:root { --bg:#0b1320; --card:#111827; --ink:#e5e7eb; --muted:#94a3b8; --brand:#0f766e; --danger:#b91c1c; }
-*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-header{padding:24px;text-align:center;background:linear-gradient(180deg,#0f172a,transparent)}
-h1{margin:0 0 4px 0;font-size:28px} .subtitle{margin:0;color:var(--muted)}
-main{max-width:900px;margin:24px auto;padding:0 16px}
-.card{background:var(--card);padding:16px;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.25);margin-bottom:16px}
+/* Light, clean UI with your brand accent (forest green + soft brown) */
+:root{
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --ink:#0f172a;
+  --muted:#4b5563;
+  --brand:#2f6f3e;        /* forest green */
+  --brand-soft:#e7f2ea;
+  --accent:#8b5e34;       /* soft brown */
+  --line:#e5e7eb;
+  --danger:#b91c1c;
+  --input:#f8fafc;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+  color:var(--ink);
+  background:var(--bg);
+}
+
+header{
+  padding:28px 16px;
+  text-align:center;
+  background:linear-gradient(180deg,#ffffff, #f0f4f7);
+  border-bottom:1px solid var(--line);
+}
+h1{margin:0 0 6px 0;font-size:28px}
+.subtitle{margin:0;color:var(--muted)}
+
+main{max-width:980px;margin:24px auto;padding:0 16px}
+
+.card{
+  background:var(--card);
+  padding:18px;
+  border-radius:16px;
+  border:1px solid var(--line);
+  box-shadow:0 4px 20px rgba(17,24,39,0.06);
+  margin-bottom:16px;
+}
+
 h2{margin:0 0 12px 0;font-size:18px}
 .row{display:flex;gap:10px;align-items:center;margin:10px 0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-input,select,button,label.fileLabel{background:#0f172a;color:var(--ink);border:1px solid #1f2937;border-radius:10px;padding:10px}
-button{cursor:pointer;border-color:transparent;background:var(--brand)}
+
+input,select,button,label.fileLabel{
+  background:var(--input);
+  color:var(--ink);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+}
+
+input:focus,select:focus{
+  outline:2px solid var(--brand-soft);
+  border-color:var(--brand);
+}
+
+button{
+  cursor:pointer;
+  border-color:transparent;
+  background:var(--brand);
+  color:#fff;
+  transition:filter .15s ease, transform .02s ease;
+}
 button:hover{filter:brightness(1.05)}
+button:active{transform:translateY(1px)}
 button.danger{background:var(--danger)}
+
 .wrap{display:flex;flex-wrap:wrap;gap:10px}
-.tableWrap{overflow:auto;border:1px solid #1f2937;border-radius:10px}
-table{width:100%;border-collapse:collapse;min-width:520px}
-th,td{padding:10px;border-bottom:1px solid #1f2937}
+.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{padding:10px;border-bottom:1px solid var(--line)}
 th{text-align:left;color:var(--muted);font-weight:600}
 td:last-child{width:1%}
+
 footer{padding:24px;text-align:center;color:var(--muted)}
+
 label.fileLabel{display:inline-flex;gap:8px;align-items:center}
 label.fileLabel input{display:none}
 .hint{color:var(--muted);margin-top:8px}
+
 #dupLastBtn{margin-top:8px}
+
+/* Subtle badges (not used yet, kept for future) */
+.badge{
+  display:inline-block;padding:4px 8px;border-radius:999px;
+  background:var(--brand-soft);color:var(--brand);border:1px solid var(--line);
+}

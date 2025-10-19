@@ -61,12 +61,20 @@ function applyFilters(rows){
 function renderDogs(){
   const dogSelect = $('#dogSelect'); if (!dogSelect) return;
   dogSelect.innerHTML = '';
-  if (dogs.length===0){ const opt=document.createElement('option'); opt.value=''; opt.textContent='— Add a dog first —'; dogSelect.appendChild(opt); return; }
+  if (dogs.length===0){
+    const opt=document.createElement('option');
+    opt.value=''; opt.textContent='— Add a dog first —';
+    dogSelect.appendChild(opt);
+    return;
+  }
   for(const d of dogs){
     const opt=document.createElement('option'); opt.value=d.id;
-    const parts=[d.name]; const suffix=[]; if(d.owner)suffix.push(d.owner); if(d.breed)suffix.push(`(${d.breed})`);
+    const parts=[d.name]; const suffix=[];
+    if(d.owner) suffix.push(d.owner);
+    if(d.breed) suffix.push(`(${d.breed})`);
     if (suffix.length) parts.push('—', suffix.join(' '));
-    opt.textContent = parts.join(' '); dogSelect.appendChild(opt);
+    opt.textContent = parts.join(' ');
+    dogSelect.appendChild(opt);
   }
   if(!dogs.some(d=>d.id===dogSelect.value)){ dogSelect.value=dogs[0].id; }
 }
@@ -90,7 +98,7 @@ function renderEntries(){
   const base = dogId ? entries.filter(e => e.dogId === dogId) : [];
   const filtered = applyFilters(base);
 
-  // NEVER hide the card (keeps Print / ZIP / filters visible)
+  // Keep card visible always (so Print/filters/ZIP remain visible)
   entriesCard.style.display = '';
   if (hint) hint.hidden = base.length > 0;
 
@@ -102,7 +110,6 @@ function renderEntries(){
   entriesBody.innerHTML = '';
 
   if (base.length === 0) {
-    // Empty state: show a friendly row so it's obvious why it's blank
     const tr = document.createElement('tr');
     const td = document.createElement('td');
     td.colSpan = 7;
@@ -129,6 +136,7 @@ function renderEntries(){
     const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.className='danger'; delBtn.style.marginLeft='6px';
     tdA.appendChild(editBtn); tdA.appendChild(delBtn); tr.appendChild(tdA);
 
+    // Edit mode swap
     on(editBtn,'click',()=>{ editingId=e.id; swapToEdit(tr,e); });
     on(delBtn,'click',()=>{ if(!confirm('Delete this entry?')) return; entries = entries.filter(x=>x.id!==e.id); save(LS_KEYS.entries, entries); renderEntries(); renderChart(); });
 
@@ -143,44 +151,6 @@ function renderEntries(){
     td.textContent = 'No entries match the current filters.';
     tr.appendChild(td);
     entriesBody.appendChild(tr);
-  }
-}
-
-  // Auto-collapse: hide card if truly zero entries total for selected dog
-  const hasAny = base.length > 0;
-  entriesCard.style.display = hasAny ? '' : 'none';
-  if (hint) hint.hidden = hasAny;
-
-  const dog = getDog(dogId);
-  title.textContent = dog ? `Entries — ${dog.name}` : 'Entries';
-
-  entriesBody.innerHTML = '';
-  for (const e of filtered){
-    const d = getDog(e.dogId);
-    const tr = document.createElement('tr');
-
-    const tdDT = document.createElement('td'); tdDT.textContent = e.dtISO.replace('T',' ').slice(0,16); tr.appendChild(tdDT);
-    const tdDog = document.createElement('td'); tdDog.textContent = d?.name ?? ''; tr.appendChild(tdDog);
-    const tdOwner = document.createElement('td'); tdOwner.textContent = d?.owner ?? ''; tr.appendChild(tdOwner);
-    const tdBreed = document.createElement('td'); tdBreed.textContent = d?.breed ?? ''; tr.appendChild(tdBreed);
-    const tdW = document.createElement('td'); tdW.textContent = formatKg(e.weight); tr.appendChild(tdW);
-    const tdN = document.createElement('td'); tdN.textContent = e.notes || ''; tr.appendChild(tdN);
-
-    const tdA = document.createElement('td');
-    const editBtn = document.createElement('button'); editBtn.textContent = 'Edit';
-    const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.className='danger'; delBtn.style.marginLeft='6px';
-    tdA.appendChild(editBtn); tdA.appendChild(delBtn); tr.appendChild(tdA);
-
-    // Edit mode swap
-    on(editBtn,'click',()=>{ editingId=e.id; swapToEdit(tr,e); });
-    on(delBtn,'click',()=>{ if(!confirm('Delete this entry?')) return; entries = entries.filter(x=>x.id!==e.id); save(LS_KEYS.entries, entries); renderEntries(); renderChart(); });
-
-    entriesBody.appendChild(tr);
-  }
-
-  if (filtered.length===0 && hasAny){
-    // Show a small row explaining filters hid everything
-    const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan=7; td.textContent='No entries match the filters.'; tr.appendChild(td); entriesBody.appendChild(tr);
   }
 }
 
@@ -206,7 +176,7 @@ function swapToEdit(tr, e){
   on(cancelBtn,'click',()=>{ editingId=null; renderEntries(); });
 }
 
-// Tiny chart
+// ----- Tiny chart renderer (no libraries) ----------------------------------
 function renderChart(){
   const canvas=$('#chart'); if(!canvas) return;
   const dogId=$('#dogSelect')?.value||null;
@@ -214,7 +184,8 @@ function renderChart(){
   rows.sort((a,b)=> a.dtISO.localeCompare(b.dtISO));
 
   const rect=canvas.getBoundingClientRect();
-  canvas.width=Math.max(320,Math.floor(rect.width)); canvas.height=Math.max(200,Math.floor(rect.height));
+  canvas.width=Math.max(320,Math.floor(rect.width));
+  canvas.height=Math.max(200,Math.floor(rect.height));
   const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
 
   if(rows.length===0){ ctx.fillStyle='#6b7280'; ctx.font='14px system-ui'; ctx.fillText('No data yet — add some weights to see the trend.',12,24); return; }
@@ -225,18 +196,22 @@ function renderChart(){
   const yPad=(maxY-minY)===0?1:(maxY-minY)*0.1; const y0=minY-yPad, y1=maxY+yPad;
   const xScale=t=> W*(t-minX)/((maxX-minX)||1); const yScale=v=> H*(1-(v-y0)/((y1-y0)||1));
 
-  ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+H); ctx.lineTo(padL+W,padT+H); ctx.stroke();
+  ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1; ctx.beginPath();
+  ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+H); ctx.lineTo(padL+W,padT+H); ctx.stroke();
   ctx.fillStyle='#6b7280'; ctx.font='12px system-ui';
   [y0,(y0+y1)/2,y1].forEach(v=>{ const y=padT+yScale(v); ctx.fillText(v.toFixed(1),4,y+4); ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+W,y); ctx.stroke(); });
 
   ctx.strokeStyle='#2f6f3e'; ctx.lineWidth=2; ctx.beginPath();
   rows.forEach((r,i)=>{ const x=padL+xScale(new Date(r.dtISO).getTime()); const y=padT+yScale(Number(r.weight)); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
-  ctx.fillStyle='#0f172a'; rows.forEach(r=>{ const x=padL+xScale(new Date(r.dtISO).getTime()); const y=padT+yScale(Number(r.weight)); ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); });
-  const fmt=d=> new Date(d).toISOString().slice(0,10); ctx.fillStyle='#6b7280'; ctx.fillText(fmt(minX),padL,padT+H+22); ctx.textAlign='right'; ctx.fillText(fmt(maxX),padL+W,padT+H+22); ctx.textAlign='left';
-  const last=rows[rows.length-1]; const lx=padL+xScale(new Date(last.dtISO).getTime()); const ly=padT+yScale(Number(last.weight)); ctx.fillStyle='#2f6f3e'; ctx.font='12px system-ui'; ctx.fillText(`${Number(last.weight).toFixed(2)} kg`, lx+6, ly-8);
+  ctx.fillStyle='#0f172a';
+  rows.forEach(r=>{ const x=padL+xScale(new Date(r.dtISO).getTime()); const y=padT+yScale(Number(r.weight)); ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); });
+  const fmt=d=> new Date(d).toISOString().slice(0,10);
+  ctx.fillStyle='#6b7280'; ctx.fillText(fmt(minX),padL,padT+H+22); ctx.textAlign='right'; ctx.fillText(fmt(maxX),padL+W,padT+H+22); ctx.textAlign='left';
+  const last=rows[rows.length-1]; const lx=padL+xScale(new Date(last.dtISO).getTime()); const ly=padT+yScale(Number(last.weight));
+  ctx.fillStyle='#2f6f3e'; ctx.font='12px system-ui'; ctx.fillText(`${Number(last.weight).toFixed(2)} kg`, lx+6, ly-8);
 }
 
-// CSV + ZIP helpers
+// ===== CSV + ZIP helpers ===================================================
 function toCsv(rows, includeDogInfo=true){
   const header = includeDogInfo? ['dog','owner','breed','datetime','weight_kg','notes'] : ['datetime','weight_kg','notes'];
   const lines=[header.join(',')];
@@ -248,7 +223,7 @@ function toCsv(rows, includeDogInfo=true){
   return lines.join('\n');
 }
 
-// Minimal ZIP (STORE method, no compression)
+// Minimal ZIP (STORE, no compression)
 function crc32(buf){ let c=~0>>>0; for(let i=0;i<buf.length;i++){ c=(c>>>8)^CRC32_TABLE[(c^buf[i])&0xFF]; } return (~c)>>>0; }
 const CRC32_TABLE = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=((c&1)?(0xEDB88320^(c>>>1)):(c>>>1)); t[n]=c>>>0; } return t; })();
 function strToU8(s){ return new TextEncoder().encode(s); }
@@ -309,22 +284,43 @@ function initApp(){
   // Defaults
   if ($('#dtInput')) $('#dtInput').value = todayLocalDatetimeValue();
 
-  // Dogs — Add
-  on($('#addDogBtn'),'click', ()=>{
-    const name=($('#newDogName')?.value||'').trim();
-    const owner=($('#newOwner')?.value||'').trim();
-    const breed=($('#newBreed')?.value||'').trim();
-    if(!name) return alert('Enter a dog name.');
-    if(dogs.some(d=>d.name.toLowerCase()===name.toLowerCase() && d.owner.toLowerCase()===owner.toLowerCase())) return alert('That dog (with this owner) already exists.');
-    const dog={id:crypto.randomUUID(), name, owner, breed};
-    dogs.push(dog); save(LS_KEYS.dogs, dogs);
-    if($('#newDogName')) $('#newDogName').value='';
-    if($('#newOwner')) $('#newOwner').value='';
-    if($('#newBreed')) $('#newBreed').value='';
-    renderDogs(); renderEntries(); renderChart();
-  });
+  // Dogs — Add (robust handler)
+  const addDogEl = document.querySelector('#addDogBtn');
+  if (addDogEl) {
+    addDogEl.addEventListener('click', () => {
+      const name = (document.querySelector('#newDogName')?.value || '').trim();
+      const owner = (document.querySelector('#newOwner')?.value || '').trim();
+      const breed = (document.querySelector('#newBreed')?.value || '').trim();
 
-  // Dogs — Delete (custom modal instead of confirm)
+      if (!name) { alert('Enter a dog name.'); document.querySelector('#newDogName')?.focus(); return; }
+
+      const duplicate = dogs.some(d =>
+        d.name.toLowerCase() === name.toLowerCase() &&
+        (d.owner || '').toLowerCase() === owner.toLowerCase()
+      );
+      if (duplicate) { alert('That dog (with this owner) already exists.'); return; }
+
+      const dog = { id: crypto.randomUUID(), name, owner, breed };
+      dogs.push(dog);
+      save(LS_KEYS.dogs, dogs);
+
+      const n = document.querySelector('#newDogName');
+      const o = document.querySelector('#newOwner');
+      const b = document.querySelector('#newBreed');
+      if (n) n.value = '';
+      if (o) o.value = '';
+      if (b) b.value = '';
+
+      renderDogs();
+      const sel = document.querySelector('#dogSelect');
+      if (sel) sel.value = dog.id;
+
+      renderEntries();
+      renderChart();
+    });
+  }
+
+  // Dogs — Delete (custom modal)
   const confirmModal = $('#confirmModal');
   const confirmDogName = $('#confirmDogName');
   const confirmDeleteBtn = $('#confirmDeleteBtn');
@@ -355,7 +351,6 @@ function initApp(){
   on(confirmDeleteBtn,'click', ()=>{
     const dogId = pendingDeleteDogId;
     if (!dogId) { if (confirmModal) confirmModal.hidden = true; return; }
-    // remove dog + its entries
     dogs = dogs.filter(d => d.id !== dogId);
     entries = entries.filter(e => e.dogId !== dogId);
     save(LS_KEYS.dogs, dogs);
@@ -448,7 +443,7 @@ function initApp(){
   renderDogs(); renderEntries(); renderChart();
 }
 
-// Install prompt (safe)
+// ===== Install prompt (PWA) ===============================================
 let deferredPrompt=null;
 function wireInstall(){
   const installBtn=$('#installBtn'); if(installBtn) installBtn.style.display='none';
@@ -460,6 +455,9 @@ function wireInstall(){
   window.addEventListener('appinstalled',()=>{ if($('#installBtn')) $('#installBtn').style.display='none'; });
 }
 
-// Start when DOM is ready
-if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', ()=>{ wireInstall(); initApp(); }); }
-else { wireInstall(); initApp(); }
+// ===== Start when DOM is ready ============================================
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', ()=>{ wireInstall(); initApp(); });
+} else {
+  wireInstall(); initApp();
+}

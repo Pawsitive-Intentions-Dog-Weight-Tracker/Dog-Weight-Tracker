@@ -72,12 +72,79 @@ function renderDogs(){
 }
 
 function renderEntries(){
-  const dogId = $('#dogSelect')?.value || null;
-  const entriesBody = $('#entriesBody'); const title = $('#entriesTitle'); const entriesCard = $('#entriesCard'); const hint = $('#noEntriesHint');
+  const dogSelect = $('#dogSelect');
+  const entriesBody = $('#entriesBody');
+  const title = $('#entriesTitle');
+  const entriesCard = $('#entriesCard');
+  const hint = $('#noEntriesHint');
   if (!entriesBody || !title || !entriesCard) return;
 
-  const base = dogId ? entries.filter(e=>e.dogId===dogId) : [];
+  // Ensure a dog is selected if any exist
+  let dogId = dogSelect?.value || null;
+  if ((!dogId || !getDog(dogId)) && dogs.length > 0) {
+    dogId = dogs[0].id;
+    if (dogSelect) dogSelect.value = dogId;
+  }
+
+  // Rows for the selected dog (or empty)
+  const base = dogId ? entries.filter(e => e.dogId === dogId) : [];
   const filtered = applyFilters(base);
+
+  // NEVER hide the card (keeps Print / ZIP / filters visible)
+  entriesCard.style.display = '';
+  if (hint) hint.hidden = base.length > 0;
+
+  // Title
+  const dog = dogId ? getDog(dogId) : null;
+  title.textContent = dog ? `Entries — ${dog.name}` : 'Entries';
+
+  // Table body
+  entriesBody.innerHTML = '';
+
+  if (base.length === 0) {
+    // Empty state: show a friendly row so it's obvious why it's blank
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 7;
+    td.textContent = 'No entries yet — add a weight below.';
+    tr.appendChild(td);
+    entriesBody.appendChild(tr);
+    return;
+  }
+
+  // There ARE entries for this dog; render the (filtered) list
+  for (const e of filtered){
+    const d = getDog(e.dogId);
+    const tr = document.createElement('tr');
+
+    const tdDT = document.createElement('td'); tdDT.textContent = e.dtISO.replace('T',' ').slice(0,16); tr.appendChild(tdDT);
+    const tdDog = document.createElement('td'); tdDog.textContent = d?.name ?? ''; tr.appendChild(tdDog);
+    const tdOwner = document.createElement('td'); tdOwner.textContent = d?.owner ?? ''; tr.appendChild(tdOwner);
+    const tdBreed = document.createElement('td'); tdBreed.textContent = d?.breed ?? ''; tr.appendChild(tdBreed);
+    const tdW = document.createElement('td'); tdW.textContent = formatKg(e.weight); tr.appendChild(tdW);
+    const tdN = document.createElement('td'); tdN.textContent = e.notes || ''; tr.appendChild(tdN);
+
+    const tdA = document.createElement('td');
+    const editBtn = document.createElement('button'); editBtn.textContent = 'Edit';
+    const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.className='danger'; delBtn.style.marginLeft='6px';
+    tdA.appendChild(editBtn); tdA.appendChild(delBtn); tr.appendChild(tdA);
+
+    on(editBtn,'click',()=>{ editingId=e.id; swapToEdit(tr,e); });
+    on(delBtn,'click',()=>{ if(!confirm('Delete this entry?')) return; entries = entries.filter(x=>x.id!==e.id); save(LS_KEYS.entries, entries); renderEntries(); renderChart(); });
+
+    entriesBody.appendChild(tr);
+  }
+
+  // If the filters hide everything, show a message row
+  if (filtered.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 7;
+    td.textContent = 'No entries match the current filters.';
+    tr.appendChild(td);
+    entriesBody.appendChild(tr);
+  }
+}
 
   // Auto-collapse: hide card if truly zero entries total for selected dog
   const hasAny = base.length > 0;

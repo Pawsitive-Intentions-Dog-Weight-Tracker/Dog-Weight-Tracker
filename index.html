@@ -23,22 +23,23 @@
   <main>
     <!-- Entries moved to the top -->
     <section class="card" id="entriesCard">
-  <div class="row wrap between">
-    <div class="row" style="gap:12px;align-items:center">
-      <!-- Profile pic at top of Entries -->
-      <img id="profileImg" alt="Profile" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid var(--line)">
+  <div class="entriesHeaderTop">
+    <!-- Profile pic at very top (centered & bigger) -->
+    <img id="profileImg" alt="Profile" class="profileImgLg">
+    <div class="profileButtons">
       <label class="fileLabel" style="margin:0">
         Change photo
         <input id="profileFile" type="file" accept="image/*" />
       </label>
       <button id="profileClearBtn" type="button">Remove</button>
     </div>
+  </div>
 
+  <div class="row wrap between" style="margin-top:8px">
     <h2 id="entriesTitle" style="margin:0">Entries</h2>
-
     <div class="row wrap" id="entriesControls">
-      <label>From <input type="date" id="filterFrom"></label>
-      <label>To <input type="date" id="filterTo"></label>
+      <label>From <input type="date" id="filterFrom" placeholder="dd/mm/yyyy"></label>
+      <label>To <input type="date" id="filterTo" placeholder="dd/mm/yyyy"></label>
       <input type="text" id="filterOwner" placeholder="Owner contains…">
       <select id="sortSelect" title="Sort">
         <option value="date_desc">Newest first</option>
@@ -70,31 +71,17 @@
     </section>
 
     <!-- Dog management -->
-    <section class="card">
-      <h2>Dogs</h2>
-      <div class="row">
-        <label for="dogSelect">Select dog</label>
-        <select id="dogSelect"></select>
-        <button id="deleteDogBtn" type="button" class="danger">Delete Dog</button>
-      </div>
+<section class="card">
+  <h2>Dogs</h2>
+  <div class="row">
+    <label for="dogSelect">Select dog</label>
+    <select id="dogSelect"></select>
+    <button id="deleteDogBtn" type="button" class="danger">Delete Dog</button>
+    <button id="openDogModalBtn" type="button" style="margin-left:auto">Add New Dog</button>
+  </div>
+  <p class="hint">Tip: The selector shows “Dog Name — Owner (Breed)”.</p>
+</section>
 
-      <div class="grid2">
-        <div class="row">
-          <label for="newDogName">Dog name</label>
-          <input id="newDogName" type="text" placeholder="e.g. Raq" />
-        </div>
-        <div class="row">
-          <label for="newOwner">Owner surname</label>
-          <input id="newOwner" type="text" placeholder="e.g. Yoxall" />
-        </div>
-      </div>
-      <div class="row">
-        <label for="newBreed">Breed</label>
-        <input id="newBreed" type="text" placeholder="e.g. Border Collie" />
-        <button id="addDogBtn" type="button">Add Dog</button>
-      </div>
-      <p class="hint">Tip: The selector will show “Dog Name — Owner (Breed)”.</p>
-    </section>
     
     <!-- Add a measurement -->
     <section class="card">
@@ -117,6 +104,15 @@
       <button id="dupLastBtn" title="Duplicate last entry for the selected dog, with current date/time">Duplicate Last Entry</button>
     </section>
 
+<!-- Trend chart -->
+    <section class="card">
+      <h2>Trend</h2>
+      <div class="tableWrap">
+        <canvas id="chart" style="width:100%;height:260px;"></canvas>
+      </div>
+      <p class="hint">Shows the selected dog’s weights over time.</p>
+    </section>
+    
     <!-- Actions -->
     <section class="card">
       <h2>Data & Export</h2>
@@ -132,15 +128,6 @@
         <button id="installBtn" style="margin-left:auto">Install App</button>
       </div>
       <p class="hint">Data is stored on this device only. Use Backup/Restore to move between devices.</p>
-    </section>
-
-    <!-- Trend chart -->
-    <section class="card">
-      <h2>Trend</h2>
-      <div class="tableWrap">
-        <canvas id="chart" style="width:100%;height:260px;"></canvas>
-      </div>
-      <p class="hint">Shows the selected dog’s weights over time.</p>
     </section>
 
     <!-- About & Privacy -->
@@ -191,6 +178,19 @@
     <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
       <button id="editCancel">Cancel</button>
       <button id="editSave">Save</button>
+    </div>
+  </div>
+</div>
+    <!-- Add Dog Modal -->
+<div id="dogModal" class="modal" hidden>
+  <div class="modal-card">
+    <h3>Add new dog</h3>
+    <div class="row"><label>Dog name <input id="dogNameInput" type="text" placeholder="e.g. Raq"></label></div>
+    <div class="row"><label>Owner surname <input id="dogOwnerInput" type="text" placeholder="e.g. Yoxall"></label></div>
+    <div class="row"><label>Breed <input id="dogBreedInput" type="text" placeholder="e.g. Border Collie"></label></div>
+    <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+      <button id="dogCancelBtn" type="button">Cancel</button>
+      <button id="dogSaveBtn" type="button">Save</button>
     </div>
   </div>
 </div>

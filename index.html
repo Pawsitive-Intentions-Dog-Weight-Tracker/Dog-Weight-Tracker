@@ -1,1 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dog Weight Tracker</title>
+  <meta name="theme-color" content="#0f766e" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>🐾 Dog Weight Tracker</h1>
+    <p class="subtitle">Works offline • Exports CSV • No login required</p>
+  </header>
 
+  <main>
+    <!-- Dog management -->
+    <section class="card">
+      <h2>Dogs</h2>
+      <div class="row">
+        <label for="dogSelect">Select dog</label>
+        <select id="dogSelect"></select>
+        <button id="deleteDogBtn" class="danger" title="Remove dog and all its entries">Delete Dog</button>
+      </div>
+
+      <div class="row">
+        <label for="newDogName">Add a new dog</label>
+        <input id="newDogName" type="text" placeholder="e.g. Raq" />
+        <button id="addDogBtn">Add Dog</button>
+      </div>
+    </section>
+
+    <!-- Add a measurement -->
+    <section class="card">
+      <h2>Add Weight</h2>
+      <div class="grid2">
+        <div class="row">
+          <label for="dateInput">Date</label>
+          <input id="dateInput" type="date" />
+        </div>
+        <div class="row">
+          <label for="weightInput">Weight (kg)</label>
+          <input id="weightInput" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 21.3" />
+        </div>
+      </div>
+      <div class="row">
+        <label for="notesInput">Notes (optional)</label>
+        <input id="notesInput" type="text" placeholder="e.g. after dinner / vet scale" />
+      </div>
+      <button id="addEntryBtn">Add Entry</button>
+    </section>
+
+    <!-- Actions -->
+    <section class="card">
+      <h2>Data & Export</h2>
+      <div class="wrap">
+        <button id="exportCsvBtn">Export CSV (selected dog)</button>
+        <button id="exportAllCsvBtn">Export CSV (all dogs)</button>
+        <button id="backupJsonBtn">Backup (JSON)</button>
+        <label class="fileLabel">
+          Restore (JSON)
+          <input id="restoreJsonInput" type="file" accept="application/json" />
+        </label>
+        <button id="clearAllBtn" class="danger" title="Remove ALL data from this device">Clear ALL Data</button>
+      </div>
+      <p class="hint">Data is stored on this device only. Use Backup/Restore to move between devices.</p>
+    </section>
+
+    <!-- Entries table -->
+    <section class="card">
+      <h2 id="entriesTitle">Entries</h2>
+      <div class="tableWrap">
+        <table id="entriesTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Weight (kg)</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="entriesBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Offline-capable PWA. Made by you ✨</p>
+  </footer>
+
+  <script>
+    // Register service worker (for offline)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+      });
+    }
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>

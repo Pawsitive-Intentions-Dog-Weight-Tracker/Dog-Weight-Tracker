@@ -284,3 +284,20 @@ td:nth-child(5) { word-break: break-word; } /* notes can wrap */
 
 /* Slight tweak so fileLabel doesn’t shrink badly */
 label.fileLabel { white-space: nowrap; }
+/* Centered, larger profile image at top of Entries */
+.entriesHeaderTop{
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+}
+.profileImgLg{
+  width:140px; height:140px; border-radius:50%;
+  object-fit:cover; border:1px solid var(--line);
+}
+.profileButtons{ display:flex; gap:10px; align-items:center; }
+
+/* Mobile-friendly entries (already added previously) —
+   keep the stacked row rules you have. */
+
+/* Dogs card: button spacing on small screens */
+@media (max-width: 640px){
+  #openDogModalBtn{ margin-left:0 !important; }
+}

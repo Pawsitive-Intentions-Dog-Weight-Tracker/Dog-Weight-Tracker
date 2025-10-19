@@ -21,3 +21,4 @@ footer{padding:24px;text-align:center;color:var(--muted)}
 label.fileLabel{display:inline-flex;gap:8px;align-items:center}
 label.fileLabel input{display:none}
 .hint{color:var(--muted);margin-top:8px}
+#dupLastBtn{margin-top:8px}

@@ -31,7 +31,9 @@ function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
 let dogs = load(LS_KEYS.dogs, []);
 let entries = load(LS_KEYS.entries, []);
-// --- One-time: trim any old datetime values to date-only (YYYY-MM-DD) ---
+let editingId = null;
+
+// One-time normaliser to trim any lingering datetime -> date-only
 (function normaliseEntryDates(){
   let changed = false;
   for (const e of entries) {
@@ -42,7 +44,6 @@ let entries = load(LS_KEYS.entries, []);
   }
   if (changed) save(LS_KEYS.entries, entries);
 })();
-let editingId = null;
 
 // ===== Utilities & validation =============================================
 const $ = s => document.querySelector(s);
@@ -57,10 +58,9 @@ function getDog(id){ return dogs.find(d=>d.id===id)||null; }
 function formatKg(n){ const x=Number(n); return isFinite(x)?x.toFixed(2):''; }
 function formatUKDate(s){
   if (!s) return '';
-  const iso = String(s).slice(0,10); // keep only YYYY-MM-DD
+  const iso = String(s).slice(0,10);
   const [y,m,d] = iso.split('-');
-  if (!y || !m || !d) return iso;
-  return `${d}/${m}/${y}`;
+  return (y && m && d) ? `${d}/${m}/${y}` : iso;
 }
 const MIN_KG=0.50, MAX_KG=120.00;
 function parseWeight(input){ const w=parseFloat(String(input).replace(',','.')); if(!isFinite(w)) return null; return Number(w.toFixed(2)); }
@@ -230,7 +230,7 @@ on($('#editSave'),'click', ()=>{
   renderEntries(); renderChart();
 });
 
-// ----- Tiny chart renderer (no libraries) ----------------------------------
+// ----- Tiny chart renderer -------------------------------------------------
 function renderChart(){
   const canvas=$('#chart'); if(!canvas) return;
   const dogId=$('#dogSelect')?.value||null;
@@ -339,41 +339,41 @@ function initApp(){
   // Defaults
   if ($('#dtInput')) $('#dtInput').value = todayLocalDateValue();
 
-  // Dogs — Add (robust handler)
-  const addDogEl = document.querySelector('#addDogBtn');
-  if (addDogEl) {
-    addDogEl.addEventListener('click', () => {
-      const name = (document.querySelector('#newDogName')?.value || '').trim();
-      const owner = (document.querySelector('#newOwner')?.value || '').trim();
-      const breed = (document.querySelector('#newBreed')?.value || '').trim();
+  // --- Add Dog modal wiring ---
+  const dogModal = $('#dogModal');
+  const openDogModalBtn = $('#openDogModalBtn');
+  const dogNameInput = $('#dogNameInput');
+  const dogOwnerInput = $('#dogOwnerInput');
+  const dogBreedInput = $('#dogBreedInput');
+  const dogCancelBtn = $('#dogCancelBtn');
+  const dogSaveBtn = $('#dogSaveBtn');
 
-      if (!name) { alert('Enter a dog name.'); document.querySelector('#newDogName')?.focus(); return; }
-
-      const duplicate = dogs.some(d =>
-        d.name.toLowerCase() === name.toLowerCase() &&
-        (d.owner || '').toLowerCase() === owner.toLowerCase()
-      );
-      if (duplicate) { alert('That dog (with this owner) already exists.'); return; }
-
-      const dog = { id: crypto.randomUUID(), name, owner, breed };
-      dogs.push(dog);
-      save(LS_KEYS.dogs, dogs);
-
-      const n = document.querySelector('#newDogName');
-      const o = document.querySelector('#newOwner');
-      const b = document.querySelector('#newBreed');
-      if (n) n.value = '';
-      if (o) o.value = '';
-      if (b) b.value = '';
-
-      renderDogs();
-      const sel = document.querySelector('#dogSelect');
-      if (sel) sel.value = dog.id;
-
-      renderEntries();
-      renderChart();
-    });
+  on(openDogModalBtn, 'click', ()=>{
+    if (dogModal) dogModal.hidden = false;
+    if (dogNameInput) { dogNameInput.value=''; dogNameInput.focus(); }
+    if (dogOwnerInput) dogOwnerInput.value='';
+    if (dogBreedInput) dogBreedInput.value='';
+  });
+  on(dogCancelBtn, 'click', ()=>{ if (dogModal) dogModal.hidden = true; });
+  on(dogModal, 'click', (e)=>{ if (e.target === dogModal) dogModal.hidden = true; });
+  function saveDog(){
+    const name = (dogNameInput?.value || '').trim();
+    const owner = (dogOwnerInput?.value || '').trim();
+    const breed = (dogBreedInput?.value || '').trim();
+    if (!name) { alert('Enter a dog name.'); dogNameInput?.focus(); return; }
+    const duplicate = dogs.some(d => d.name.toLowerCase()===name.toLowerCase() && (d.owner||'').toLowerCase()===owner.toLowerCase());
+    if (duplicate) { alert('That dog (with this owner) already exists.'); return; }
+    const dog = { id: crypto.randomUUID(), name, owner, breed };
+    dogs.push(dog); save(LS_KEYS.dogs, dogs);
+    renderDogs();
+    const sel = $('#dogSelect'); if (sel) sel.value = dog.id;
+    renderEntries(); renderChart();
+    if (dogModal) dogModal.hidden = true;
   }
+  on(dogSaveBtn,'click', saveDog);
+  [dogNameInput, dogOwnerInput, dogBreedInput].forEach(inp=>{
+    on(inp,'keydown', (e)=>{ if(e.key==='Enter') saveDog(); });
+  });
 
   // Dogs — Delete (custom modal already in HTML)
   const confirmModal = $('#confirmModal');
@@ -481,7 +481,7 @@ function initApp(){
   on($('#aboutClose'),'click', ()=> { const m=$('#aboutModal'); if(m) m.hidden=true; });
   on($('#aboutModal'),'click', (e)=> { if (e.target === $('#aboutModal')) $('#aboutModal').hidden = true; });
 
-  // Profile photo (device-only) — lives in the Entries header now
+  // Profile photo (device-only) — lives in the Entries header
   const profileImg = $('#profileImg');
   const stored = localStorage.getItem(LS_KEYS.profile);
   if (stored && profileImg) profileImg.src = stored;

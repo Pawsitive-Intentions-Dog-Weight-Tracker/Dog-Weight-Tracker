@@ -31,6 +31,17 @@ function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
 let dogs = load(LS_KEYS.dogs, []);
 let entries = load(LS_KEYS.entries, []);
+// --- One-time: trim any old datetime values to date-only (YYYY-MM-DD) ---
+(function normaliseEntryDates(){
+  let changed = false;
+  for (const e of entries) {
+    if (e && typeof e.dtISO === 'string' && e.dtISO.length > 10) {
+      e.dtISO = e.dtISO.slice(0,10);
+      changed = true;
+    }
+  }
+  if (changed) save(LS_KEYS.entries, entries);
+})();
 let editingId = null;
 
 // ===== Utilities & validation =============================================
@@ -44,9 +55,11 @@ function todayLocalDateValue(){
 }
 function getDog(id){ return dogs.find(d=>d.id===id)||null; }
 function formatKg(n){ const x=Number(n); return isFinite(x)?x.toFixed(2):''; }
-function formatUKDate(yyyy_mm_dd){
-  if (!yyyy_mm_dd) return '';
-  const [y,m,d] = yyyy_mm_dd.split('-');
+function formatUKDate(s){
+  if (!s) return '';
+  const iso = String(s).slice(0,10); // keep only YYYY-MM-DD
+  const [y,m,d] = iso.split('-');
+  if (!y || !m || !d) return iso;
   return `${d}/${m}/${y}`;
 }
 const MIN_KG=0.50, MAX_KG=120.00;

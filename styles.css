@@ -237,3 +237,50 @@ td, th { vertical-align: middle; }
 td:nth-child(5) { word-break: break-word; } /* notes can wrap */
 
 /* Edit modal uses the base .modal/.modal-card styles you already have */
+/* --- Mobile-friendly table: stack rows, no sideways scroll --- */
+@media (max-width: 640px){
+  .tableWrap { overflow: visible; }
+  table { border: 0; min-width: 0; }
+  thead { display: none; }
+  table, tbody, tr, td { display: block; width: 100%; }
+  tr {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin: 10px 0;
+    padding: 6px 8px;
+  }
+  td {
+    border-bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 6px;
+    gap: 12px;
+  }
+  td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-weight: 600;
+    flex: 0 0 auto;
+  }
+  /* Actions cell: keep buttons together and wrap nicely */
+  td.actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 10px;
+  }
+}
+
+/* --- Make Dogs form truly single-column on phones --- */
+@media (max-width: 640px){
+  .grid2{ grid-template-columns: 1fr; }
+  .row{ flex-wrap: wrap; }
+  .row label{ flex: 1 1 100%; }
+  .row input, .row select{ width: 100%; }
+}
+
+/* Slight tweak so fileLabel doesn’t shrink badly */
+label.fileLabel { white-space: nowrap; }

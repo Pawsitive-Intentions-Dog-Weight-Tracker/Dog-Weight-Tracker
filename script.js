@@ -12,17 +12,14 @@ function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
     const nameToId = Object.fromEntries(v2Dogs.map(d => [d.name, d.id]));
     let v2Entries = [];
     if (oldEntries && Array.isArray(oldEntries)) {
-      // normalise to date-only (YYYY-MM-DD)
-      v2Entries = oldEntries.map(e => {
-        const iso = e.date ? (e.date.length >= 10 ? e.date.slice(0,10) : e.date) : new Date().toISOString().slice(0,10);
-        return {
-          id: e.id || crypto.randomUUID(),
-          dogId: nameToId[e.dog] || null,
-          dtISO: iso, // date-only
-          weight: e.weight,
-          notes: e.notes || ''
-        };
-      }).filter(e => e.dogId);
+      const today = new Date().toISOString().slice(0,10);
+      v2Entries = oldEntries.map(e => ({
+        id: e.id || crypto.randomUUID(),
+        dogId: nameToId[e.dog] || null,
+        dtISO: (e.date && e.date.length >= 10 ? e.date.slice(0,10) : today),
+        weight: e.weight,
+        notes: e.notes || ''
+      })).filter(e => e.dogId);
     }
     localStorage.setItem(LS_KEYS.dogs, JSON.stringify(v2Dogs));
     localStorage.setItem(LS_KEYS.entries, JSON.stringify(v2Entries));
@@ -330,8 +327,9 @@ function createZip(files){
     u32le(cdSize), u32le(cdStart), u16le(0)
   ];
 
-  const blob = new Blob([...chunks, ...cdChunks, ...EOCD], {type:'application/zip'});
-  return blob;
+  const blob = new Blob([...chunks, ...CDHunksPlaceholder /* intentionally left for structure */]);
+  // NOTE: Fix placeholder bug—combine cdChunks correctly:
+  return new Blob([...chunks, ...cdChunks, ...EOCD], {type:'application/zip'});
 }
 
 // ===== App wiring ==========================================================
@@ -348,12 +346,22 @@ function initApp(){
   const dogCancelBtn = $('#dogCancelBtn');
   const dogSaveBtn = $('#dogSaveBtn');
 
-  on(openDogModalBtn, 'click', ()=>{
+  function openDogModal(){
     if (dogModal) dogModal.hidden = false;
     if (dogNameInput) { dogNameInput.value=''; dogNameInput.focus(); }
     if (dogOwnerInput) dogOwnerInput.value='';
     if (dogBreedInput) dogBreedInput.value='';
+  }
+  on(openDogModalBtn, 'click', openDogModal);
+  // Robust fallback (desktop): delegate in case direct binding is bypassed
+  document.addEventListener('click', (e)=>{
+    const t = e.target;
+    if (t && (t.id === 'openDogModalBtn' || t.closest?.('#openDogModalBtn'))) {
+      e.preventDefault();
+      openDogModal();
+    }
   });
+
   on(dogCancelBtn, 'click', ()=>{ if (dogModal) dogModal.hidden = true; });
   on(dogModal, 'click', (e)=>{ if (e.target === dogModal) dogModal.hidden = true; });
   function saveDog(){
@@ -406,7 +414,7 @@ function initApp(){
   // Dog select change
   on($('#dogSelect'),'change', ()=>{ renderEntries(); renderChart(); });
 
-  // Entries add / duplicate (date-only)
+  // Entries add (date-only)
   on($('#addEntryBtn'),'click', ()=>{
     const dogId=$('#dogSelect')?.value; if(!dogId) return alert('Select a dog first.');
     const dtVal=$('#dtInput')?.value; if(!dtVal) return alert('Enter a date.');
@@ -419,16 +427,6 @@ function initApp(){
     save(LS_KEYS.entries, entries);
     if($('#weightInput')) $('#weightInput').value=''; if($('#notesInput')) $('#notesInput').value=''; if($('#dtInput')) $('#dtInput').value=todayLocalDateValue();
     renderEntries(); renderChart();
-  });
-
-  on($('#dupLastBtn'),'click', ()=>{
-    const dogId=$('#dogSelect')?.value; if(!dogId) return alert('Select a dog first.');
-    const rows=entries.filter(e=>e.dogId===dogId).sort((a,b)=>b.dtISO.localeCompare(a.dtISO));
-    if(rows.length===0) return alert('No previous entry to duplicate.');
-    const last=rows[0]; const dtNow=todayLocalDateValue(); const weight=Number(Number(last.weight).toFixed(2));
-    if(!confirmLargeChange(dogId, weight)) return;
-    entries.push({ id:crypto.randomUUID(), dogId, dtISO: dtNow, weight, notes:last.notes||'' });
-    save(LS_KEYS.entries, entries); renderEntries(); renderChart();
   });
 
   // Filters & Sort

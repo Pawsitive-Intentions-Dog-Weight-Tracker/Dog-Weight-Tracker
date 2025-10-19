@@ -93,6 +93,35 @@ function todayLocalDatetimeValue() {
 function getDog(dogId) { return dogs.find(d => d.id === dogId) || null; }
 function formatKg(n) { const x = Number(n); return isFinite(x) ? x.toFixed(2) : ''; }
 
+// ---- Validation helpers ----
+const MIN_KG = 0.50;
+const MAX_KG = 120.00;
+const FUTURE_GRACE_MIN = 10; // allow up to +10 minutes (clock skew)
+
+function parseWeight(input) {
+  const w = parseFloat(String(input).replace(',', '.'));
+  if (!isFinite(w)) return null;
+  return Number(w.toFixed(2));
+}
+function isTooFuture(dtISO) {
+  const t = new Date(dtISO).getTime();
+  const graceMs = FUTURE_GRACE_MIN * 60 * 1000;
+  return t > (Date.now() + graceMs);
+}
+function lastWeightForDog(dogId) {
+  const rows = entries.filter(e => e.dogId === dogId).sort((a,b)=> b.dtISO.localeCompare(a.dtISO));
+  return rows.length ? Number(rows[0].weight) : null;
+}
+function confirmLargeChange(dogId, newW) {
+  const last = lastWeightForDog(dogId);
+  if (last == null) return true;
+  const diff = Math.abs(newW - last) / Math.max(0.01, last);
+  if (diff > 0.20) {
+    return confirm(`This differs more than 20% from the last weight (${last.toFixed(2)} kg). Continue?`);
+  }
+  return true;
+}
+
 // ----- Init ----------------------------------------------------------------
 function init() {
   dtInput.value = todayLocalDatetimeValue();
@@ -173,32 +202,27 @@ function renderEntries() {
 
     if (editingId === e.id) {
       // --- EDIT MODE ROW ---
-      // Date/time editor
       const tdDT = document.createElement('td');
       const dt = document.createElement('input');
       dt.type = 'datetime-local';
       dt.value = (e.dtISO || '').slice(0,16);
       tdDT.appendChild(dt); tr.appendChild(tdDT);
 
-      // Dog (read-only name)
       const tdDog = document.createElement('td'); tdDog.textContent = d?.name ?? ''; tr.appendChild(tdDog);
       const tdOwner = document.createElement('td'); tdOwner.textContent = d?.owner ?? ''; tr.appendChild(tdOwner);
       const tdBreed = document.createElement('td'); tdBreed.textContent = d?.breed ?? ''; tr.appendChild(tdBreed);
 
-      // Weight editor
       const tdWeight = document.createElement('td');
       const w = document.createElement('input');
       w.type = 'number'; w.step = '0.01'; w.inputMode = 'decimal';
       w.value = formatKg(e.weight);
       tdWeight.appendChild(w); tr.appendChild(tdWeight);
 
-      // Notes editor
       const tdNotes = document.createElement('td');
       const n = document.createElement('input');
       n.type = 'text'; n.value = e.notes || '';
       tdNotes.appendChild(n); tr.appendChild(tdNotes);
 
-      // Actions: Save / Cancel
       const tdAct = document.createElement('td');
       const saveBtn = document.createElement('button'); saveBtn.textContent = 'Save';
       const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancel';
@@ -208,16 +232,19 @@ function renderEntries() {
       saveBtn.addEventListener('click', () => {
         const dtVal = dt.value;
         if (!dtVal) return alert('Enter date & time.');
-        const weight = parseFloat(String(w.value).replace(',', '.'));
-        if (!isFinite(weight)) return alert('Enter a numeric weight in kg (e.g., 21.30).');
+        if (isTooFuture(dtVal)) return alert('Date/time is in the future. Please adjust.');
 
-        // Apply updates
+        const weight = parseWeight(w.value);
+        if (weight == null) return alert('Enter a numeric weight in kg (e.g., 21.30).');
+        if (weight < MIN_KG || weight > MAX_KG) return alert(`Weight must be between ${MIN_KG.toFixed(2)} and ${MAX_KG.toFixed(2)} kg.`);
+        if (!confirmLargeChange(e.dogId, weight)) return;
+
         const idx = entries.findIndex(x => x.id === e.id);
         if (idx !== -1) {
           entries[idx] = {
             ...entries[idx],
             dtISO: dtVal.length === 16 ? dtVal + ':00' : dtVal,
-            weight: Number(weight.toFixed(2)),
+            weight,
             notes: n.value.trim()
           };
           save(LS_KEYS.entries, entries);
@@ -251,11 +278,7 @@ function renderEntries() {
       delBtn.style.marginLeft = '6px';
       tdAct.appendChild(editBtn); tdAct.appendChild(delBtn); tr.appendChild(tdAct);
 
-      editBtn.addEventListener('click', () => {
-        editingId = e.id;
-        renderEntries();
-      });
-
+      editBtn.addEventListener('click', () => { editingId = e.id; renderEntries(); });
       delBtn.addEventListener('click', () => {
         if (!confirm('Delete this entry?')) return;
         entries = entries.filter(x => x.id !== e.id);
@@ -273,15 +296,19 @@ addEntryBtn.addEventListener('click', () => {
   if (!dogId) return alert('Select a dog first.');
   const dtVal = dtInput.value;
   if (!dtVal) return alert('Enter date & time.');
-  const weight = parseFloat(String(weightInput.value).replace(',', '.'));
-  if (!isFinite(weight)) return alert('Enter a numeric weight in kg (e.g., 21.30).');
+  if (isTooFuture(dtVal)) return alert('Date/time is in the future. Please adjust.');
+
+  const weight = parseWeight(weightInput.value);
+  if (weight == null) return alert('Enter a numeric weight in kg (e.g., 21.30).');
+  if (weight < MIN_KG || weight > MAX_KG) return alert(`Weight must be between ${MIN_KG.toFixed(2)} and ${MAX_KG.toFixed(2)} kg.`);
+  if (!confirmLargeChange(dogId, weight)) return;
 
   const notes = (notesInput.value || '').trim();
   entries.push({
     id: crypto.randomUUID(),
     dogId,
     dtISO: dtVal.length === 16 ? dtVal + ':00' : dtVal, // normalise to seconds
-    weight: Number(weight.toFixed(2)),
+    weight,
     notes
   });
   save(LS_KEYS.entries, entries);
@@ -299,11 +326,14 @@ dupLastBtn?.addEventListener('click', () => {
 
   const last = rows[0];
   const dtNow = todayLocalDatetimeValue();
+  const weight = Number(Number(last.weight).toFixed(2));
+  if (!confirmLargeChange(dogId, weight)) return;
+
   entries.push({
     id: crypto.randomUUID(),
     dogId,
     dtISO: dtNow.length === 16 ? dtNow + ':00' : dtNow,
-    weight: Number(Number(last.weight).toFixed(2)),
+    weight,
     notes: last.notes || ''
   });
   save(LS_KEYS.entries, entries);
@@ -400,7 +430,7 @@ function renderChart() {
   ctx.clearRect(0,0,chartCanvas.width, chartCanvas.height);
 
   if (rows.length === 0) {
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = '#6b7280';
     ctx.font = '14px system-ui';
     ctx.fillText('No data yet — add some weights to see the trend.', 12, 24);
     return;
@@ -423,24 +453,24 @@ function renderChart() {
   const yScale = (v) => H * (1 - (v - y0) / ((y1 - y0) || 1));
 
   // Axes
-  ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 1;
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(padL, padT); ctx.lineTo(padL, padT+H); // y axis
   ctx.lineTo(padL+W, padT+H); // x axis
   ctx.stroke();
 
   // Y labels (min, mid, max)
-  ctx.fillStyle = '#94a3b8'; ctx.font = '12px system-ui';
+  ctx.fillStyle = '#6b7280'; ctx.font = '12px system-ui';
   const yTicks = [y0, (y0+y1)/2, y1];
   yTicks.forEach(v => {
     const y = padT + yScale(v);
     ctx.fillText(v.toFixed(1), 4, y+4);
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL+W, y); ctx.stroke();
   });
 
   // Line
-  ctx.strokeStyle = '#0f766e'; ctx.lineWidth = 2;
+  ctx.strokeStyle = '#2f6f3e'; ctx.lineWidth = 2;
   ctx.beginPath();
   rows.forEach((r,i) => {
     const x = padL + xScale(new Date(r.dtISO).getTime());
@@ -450,7 +480,7 @@ function renderChart() {
   ctx.stroke();
 
   // Points
-  ctx.fillStyle = '#e5e7eb';
+  ctx.fillStyle = '#0f172a';
   rows.forEach(r => {
     const x = padL + xScale(new Date(r.dtISO).getTime());
     const y = padT + yScale(Number(r.weight));
@@ -458,11 +488,8 @@ function renderChart() {
   });
 
   // X labels: first and last date
-  const fmt = (d)=> {
-    const dd = new Date(d);
-    return dd.toISOString().slice(0,10); // YYYY-MM-DD
-  };
-  ctx.fillStyle = '#94a3b8';
+  const fmt = (d)=> new Date(d).toISOString().slice(0,10);
+  ctx.fillStyle = '#6b7280';
   ctx.fillText(fmt(minX), padL, padT+H+22);
   ctx.textAlign = 'right';
   ctx.fillText(fmt(maxX), padL+W, padT+H+22);
@@ -472,6 +499,6 @@ function renderChart() {
   const last = rows[rows.length-1];
   const lx = padL + xScale(new Date(last.dtISO).getTime());
   const ly = padT + yScale(Number(last.weight));
-  ctx.fillStyle = '#0f766e'; ctx.font = '12px system-ui';
+  ctx.fillStyle = '#2f6f3e'; ctx.font = '12px system-ui';
   ctx.fillText(`${Number(last.weight).toFixed(2)} kg`, lx+6, ly-8);
 }

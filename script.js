@@ -498,6 +498,14 @@ function initApp(){
     localStorage.removeItem(LS_KEYS.profile);
     if (profileImg) profileImg.src = '';
   });
+  // NEW: click/keyboard on photo opens the file picker
+on(profileImg, 'click', () => { profileFile?.click(); });
+on(profileImg, 'keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    profileFile?.click();
+  }
+});
 
   // Initial render
   if ($('#dtInput')) $('#dtInput').value = todayLocalDateValue();

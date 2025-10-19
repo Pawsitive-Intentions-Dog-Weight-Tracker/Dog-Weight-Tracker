@@ -1,5 +1,5 @@
 // ===== Storage keys and helpers ===========================================
-const LS_KEYS = { dogs: 'dwt_dogs_v2', entries: 'dwt_entries_v2' };
+const LS_KEYS = { dogs: 'dwt_dogs_v2', entries: 'dwt_entries_v2', profile: 'dwt_profile_img' };
 function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
@@ -12,13 +12,17 @@ function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
     const nameToId = Object.fromEntries(v2Dogs.map(d => [d.name, d.id]));
     let v2Entries = [];
     if (oldEntries && Array.isArray(oldEntries)) {
-      v2Entries = oldEntries.map(e => ({
-        id: e.id || crypto.randomUUID(),
-        dogId: nameToId[e.dog] || null,
-        dtISO: e.date ? (e.date.length === 10 ? e.date + 'T00:00:00' : e.date) : new Date().toISOString(),
-        weight: e.weight,
-        notes: e.notes || ''
-      })).filter(e => e.dogId);
+      // normalise to date-only (YYYY-MM-DD)
+      v2Entries = oldEntries.map(e => {
+        const iso = e.date ? (e.date.length >= 10 ? e.date.slice(0,10) : e.date) : new Date().toISOString().slice(0,10);
+        return {
+          id: e.id || crypto.randomUUID(),
+          dogId: nameToId[e.dog] || null,
+          dtISO: iso, // date-only
+          weight: e.weight,
+          notes: e.notes || ''
+        };
+      }).filter(e => e.dogId);
     }
     localStorage.setItem(LS_KEYS.dogs, JSON.stringify(v2Dogs));
     localStorage.setItem(LS_KEYS.entries, JSON.stringify(v2Entries));
@@ -32,21 +36,37 @@ let editingId = null;
 // ===== Utilities & validation =============================================
 const $ = s => document.querySelector(s);
 const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
-function todayLocalDatetimeValue(){ const d=new Date(); d.setSeconds(0,0); const pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+
+function todayLocalDateValue(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
 function getDog(id){ return dogs.find(d=>d.id===id)||null; }
 function formatKg(n){ const x=Number(n); return isFinite(x)?x.toFixed(2):''; }
-const MIN_KG=0.50, MAX_KG=120.00, FUTURE_GRACE_MIN=10;
+function formatUKDate(yyyy_mm_dd){
+  if (!yyyy_mm_dd) return '';
+  const [y,m,d] = yyyy_mm_dd.split('-');
+  return `${d}/${m}/${y}`;
+}
+const MIN_KG=0.50, MAX_KG=120.00;
 function parseWeight(input){ const w=parseFloat(String(input).replace(',','.')); if(!isFinite(w)) return null; return Number(w.toFixed(2)); }
-function isTooFuture(dtISO){ const t=new Date(dtISO).getTime(); return t>(Date.now()+FUTURE_GRACE_MIN*60*1000); }
+function isFutureDate(dateStr){
+  if (!dateStr) return false;
+  const d = new Date(dateStr + 'T00:00:00');
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return d.getTime() > today.getTime();
+}
 function lastWeightForDog(dogId){ const rows=entries.filter(e=>e.dogId===dogId).sort((a,b)=>b.dtISO.localeCompare(a.dtISO)); return rows.length?Number(rows[0].weight):null; }
 function confirmLargeChange(dogId,newW){ const last=lastWeightForDog(dogId); if(last==null) return true; const diff=Math.abs(newW-last)/Math.max(0.01,last); return diff<=0.20 || confirm(`This differs more than 20% from the last weight (${last.toFixed(2)} kg). Continue?`); }
 
-// ===== Filters/sort state ==================================================
+// ===== Filters/sort state (date-only) =====================================
 const filters = { from: null, to: null, owner: '', sort: 'date_desc' };
 function applyFilters(rows){
   let out = rows.slice();
-  if (filters.from) out = out.filter(r => r.dtISO >= filters.from + 'T00:00');
-  if (filters.to) out = out.filter(r => r.dtISO <= filters.to + 'T23:59');
+  if (filters.from) out = out.filter(r => r.dtISO >= filters.from);
+  if (filters.to) out = out.filter(r => r.dtISO <= filters.to);
   if (filters.owner) out = out.filter(r => (getDog(r.dogId)?.owner || '').toLowerCase().includes(filters.owner.toLowerCase()));
   switch(filters.sort){
     case 'date_asc': out.sort((a,b)=> a.dtISO.localeCompare(b.dtISO)); break;
@@ -87,45 +107,38 @@ function renderEntries(){
   const hint = $('#noEntriesHint');
   if (!entriesBody || !title || !entriesCard) return;
 
-  // Ensure a dog is selected if any exist
   let dogId = dogSelect?.value || null;
   if ((!dogId || !getDog(dogId)) && dogs.length > 0) {
     dogId = dogs[0].id;
     if (dogSelect) dogSelect.value = dogId;
   }
 
-  // Rows for the selected dog (or empty)
   const base = dogId ? entries.filter(e => e.dogId === dogId) : [];
   const filtered = applyFilters(base);
 
-  // Keep card visible always (so Print/filters/ZIP remain visible)
   entriesCard.style.display = '';
   if (hint) hint.hidden = base.length > 0;
 
-  // Title
   const dog = dogId ? getDog(dogId) : null;
   title.textContent = dog ? `Entries — ${dog.name}` : 'Entries';
 
-  // Table body
   entriesBody.innerHTML = '';
 
   if (base.length === 0) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = 7;
+    td.colSpan = 6;
     td.textContent = 'No entries yet — add a weight below.';
     tr.appendChild(td);
     entriesBody.appendChild(tr);
     return;
   }
 
-  // There ARE entries for this dog; render the (filtered) list
   for (const e of filtered){
     const d = getDog(e.dogId);
     const tr = document.createElement('tr');
 
-    const tdDT = document.createElement('td'); tdDT.textContent = e.dtISO.replace('T',' ').slice(0,16); tr.appendChild(tdDT);
-    const tdDog = document.createElement('td'); tdDog.textContent = d?.name ?? ''; tr.appendChild(tdDog);
+    const tdDT = document.createElement('td'); tdDT.textContent = formatUKDate(e.dtISO); tr.appendChild(tdDT);
     const tdOwner = document.createElement('td'); tdOwner.textContent = d?.owner ?? ''; tr.appendChild(tdOwner);
     const tdBreed = document.createElement('td'); tdBreed.textContent = d?.breed ?? ''; tr.appendChild(tdBreed);
     const tdW = document.createElement('td'); tdW.textContent = formatKg(e.weight); tr.appendChild(tdW);
@@ -136,45 +149,52 @@ function renderEntries(){
     const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.className='danger'; delBtn.style.marginLeft='6px';
     tdA.appendChild(editBtn); tdA.appendChild(delBtn); tr.appendChild(tdA);
 
-    // Edit mode swap
-    on(editBtn,'click',()=>{ editingId=e.id; swapToEdit(tr,e); });
+    on(editBtn,'click',()=> openEditModal(e.id));
     on(delBtn,'click',()=>{ if(!confirm('Delete this entry?')) return; entries = entries.filter(x=>x.id!==e.id); save(LS_KEYS.entries, entries); renderEntries(); renderChart(); });
 
     entriesBody.appendChild(tr);
   }
 
-  // If the filters hide everything, show a message row
   if (filtered.length === 0) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = 7;
+    td.colSpan = 6;
     td.textContent = 'No entries match the current filters.';
     tr.appendChild(td);
     entriesBody.appendChild(tr);
   }
 }
 
-function swapToEdit(tr, e){
-  const d=getDog(e.dogId);
-  tr.innerHTML='';
-  const tdDT=document.createElement('td'); const dt=document.createElement('input'); dt.type='datetime-local'; dt.value=(e.dtISO||'').slice(0,16); tdDT.appendChild(dt); tr.appendChild(tdDT);
-  const tdDog=document.createElement('td'); tdDog.textContent=d?.name??''; tr.appendChild(tdDog);
-  const tdOwner=document.createElement('td'); tdOwner.textContent=d?.owner??''; tr.appendChild(tdOwner);
-  const tdBreed=document.createElement('td'); tdBreed.textContent=d?.breed??''; tr.appendChild(tdBreed);
-  const tdW=document.createElement('td'); const w=document.createElement('input'); w.type='number'; w.step='0.01'; w.inputMode='decimal'; w.value=formatKg(e.weight); tdW.appendChild(w); tr.appendChild(tdW);
-  const tdN=document.createElement('td'); const n=document.createElement('input'); n.type='text'; n.value=e.notes||''; tdN.appendChild(n); tr.appendChild(tdN);
-  const tdA=document.createElement('td'); const saveBtn=document.createElement('button'); saveBtn.textContent='Save'; const cancelBtn=document.createElement('button'); cancelBtn.textContent='Cancel'; cancelBtn.style.marginLeft='6px'; tdA.appendChild(saveBtn); tdA.appendChild(cancelBtn); tr.appendChild(tdA);
-
-  on(saveBtn,'click',()=>{
-    const dtVal=dt.value; if(!dtVal) return alert('Enter date & time.'); if(isTooFuture(dtVal)) return alert('Date/time is in the future. Please adjust.');
-    const weight=parseWeight(w.value); if(weight==null) return alert('Enter a numeric weight in kg (e.g., 21.30).');
-    if(weight<MIN_KG||weight>MAX_KG) return alert(`Weight must be between ${MIN_KG.toFixed(2)} and ${MAX_KG.toFixed(2)} kg.`);
-    if(!confirmLargeChange(e.dogId, weight)) return;
-    const idx=entries.findIndex(x=>x.id===e.id); if(idx!==-1){ entries[idx]={...entries[idx], dtISO:dtVal.length===16?dtVal+':00':dtVal, weight, notes:n.value.trim()}; save(LS_KEYS.entries, entries); }
-    editingId=null; renderEntries(); renderChart();
-  });
-  on(cancelBtn,'click',()=>{ editingId=null; renderEntries(); });
+// ----- Edit Modal ----------------------------------------------------------
+function openEditModal(entryId){
+  editingId = entryId;
+  const e = entries.find(x => x.id === entryId); if (!e) return;
+  $('#editDate').value = (e.dtISO || '').slice(0,10);
+  $('#editWeight').value = formatKg(e.weight);
+  $('#editNotes').value = e.notes || '';
+  $('#editModal').hidden = false;
 }
+function closeEditModal(){ $('#editModal').hidden = true; editingId = null; }
+
+on($('#editCancel'),'click', closeEditModal);
+on($('#editModal'),'click', (ev)=>{ if (ev.target === $('#editModal')) closeEditModal(); });
+on($('#editSave'),'click', ()=>{
+  const e = entries.find(x => x.id === editingId); if (!e) return closeEditModal();
+  const dtVal = $('#editDate').value;
+  if (!dtVal) return alert('Enter a date.');
+  if (isFutureDate(dtVal)) return alert('Date cannot be in the future.');
+  const weight = parseWeight($('#editWeight').value);
+  if (weight == null) return alert('Enter a numeric weight in kg (e.g., 21.30).');
+  if (weight < MIN_KG || weight > MAX_KG) return alert(`Weight must be between ${MIN_KG.toFixed(2)} and ${MAX_KG.toFixed(2)} kg.`);
+  if (!confirmLargeChange(e.dogId, weight)) return;
+
+  e.dtISO = dtVal.slice(0,10);
+  e.weight = weight;
+  e.notes = ($('#editNotes').value || '').trim();
+  save(LS_KEYS.entries, entries);
+  closeEditModal();
+  renderEntries(); renderChart();
+});
 
 // ----- Tiny chart renderer (no libraries) ----------------------------------
 function renderChart(){
@@ -191,7 +211,8 @@ function renderChart(){
   if(rows.length===0){ ctx.fillStyle='#6b7280'; ctx.font='14px system-ui'; ctx.fillText('No data yet — add some weights to see the trend.',12,24); return; }
 
   const padL=40,padR=10,padT=10,padB=30, W=canvas.width-padL-padR, H=canvas.height-padT-padB;
-  const xs=rows.map(r=>new Date(r.dtISO).getTime()); const ys=rows.map(r=>Number(r.weight));
+  const xs=rows.map(r=> new Date(r.dtISO + 'T00:00:00').getTime());
+  const ys=rows.map(r=> Number(r.weight));
   const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
   const yPad=(maxY-minY)===0?1:(maxY-minY)*0.1; const y0=minY-yPad, y1=maxY+yPad;
   const xScale=t=> W*(t-minX)/((maxX-minX)||1); const yScale=v=> H*(1-(v-y0)/((y1-y0)||1));
@@ -202,18 +223,18 @@ function renderChart(){
   [y0,(y0+y1)/2,y1].forEach(v=>{ const y=padT+yScale(v); ctx.fillText(v.toFixed(1),4,y+4); ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+W,y); ctx.stroke(); });
 
   ctx.strokeStyle='#2f6f3e'; ctx.lineWidth=2; ctx.beginPath();
-  rows.forEach((r,i)=>{ const x=padL+xScale(new Date(r.dtISO).getTime()); const y=padT+yScale(Number(r.weight)); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
+  rows.forEach((r,i)=>{ const x=padL+xScale(new Date(r.dtISO + 'T00:00:00').getTime()); const y=padT+yScale(Number(r.weight)); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
   ctx.fillStyle='#0f172a';
-  rows.forEach(r=>{ const x=padL+xScale(new Date(r.dtISO).getTime()); const y=padT+yScale(Number(r.weight)); ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); });
-  const fmt=d=> new Date(d).toISOString().slice(0,10);
+  rows.forEach(r=>{ const x=padL+xScale(new Date(r.dtISO + 'T00:00:00').getTime()); const y=padT+yScale(Number(r.weight)); ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); });
+  const fmt=d=> new Date(d).toISOString().slice(0,10).split('-').reverse().join('/'); // UK label
   ctx.fillStyle='#6b7280'; ctx.fillText(fmt(minX),padL,padT+H+22); ctx.textAlign='right'; ctx.fillText(fmt(maxX),padL+W,padT+H+22); ctx.textAlign='left';
-  const last=rows[rows.length-1]; const lx=padL+xScale(new Date(last.dtISO).getTime()); const ly=padT+yScale(Number(last.weight));
+  const last=rows[rows.length-1]; const lx=padL+xScale(new Date(last.dtISO + 'T00:00:00').getTime()); const ly=padT+yScale(Number(last.weight));
   ctx.fillStyle='#2f6f3e'; ctx.font='12px system-ui'; ctx.fillText(`${Number(last.weight).toFixed(2)} kg`, lx+6, ly-8);
 }
 
 // ===== CSV + ZIP helpers ===================================================
 function toCsv(rows, includeDogInfo=true){
-  const header = includeDogInfo? ['dog','owner','breed','datetime','weight_kg','notes'] : ['datetime','weight_kg','notes'];
+  const header = includeDogInfo? ['dog','owner','breed','date','weight_kg','notes'] : ['date','weight_kg','notes'];
   const lines=[header.join(',')];
   for(const r of rows){
     const d=getDog(r.dogId); const n=(r.notes??'').replaceAll('"','""');
@@ -282,7 +303,7 @@ function createZip(files){
 // ===== App wiring ==========================================================
 function initApp(){
   // Defaults
-  if ($('#dtInput')) $('#dtInput').value = todayLocalDatetimeValue();
+  if ($('#dtInput')) $('#dtInput').value = todayLocalDateValue();
 
   // Dogs — Add (robust handler)
   const addDogEl = document.querySelector('#addDogBtn');
@@ -320,7 +341,7 @@ function initApp(){
     });
   }
 
-  // Dogs — Delete (custom modal)
+  // Dogs — Delete (custom modal already in HTML)
   const confirmModal = $('#confirmModal');
   const confirmDogName = $('#confirmDogName');
   const confirmDeleteBtn = $('#confirmDeleteBtn');
@@ -335,26 +356,14 @@ function initApp(){
     if (confirmDogName) confirmDogName.textContent = dog.name;
     if (confirmModal) confirmModal.hidden = false;
   });
-
-  on(confirmCancelBtn,'click', ()=>{
-    pendingDeleteDogId = null;
-    if (confirmModal) confirmModal.hidden = true;
-  });
-
-  on(confirmModal,'click', (e)=>{
-    if (e.target === confirmModal) { // click outside card
-      pendingDeleteDogId = null;
-      confirmModal.hidden = true;
-    }
-  });
-
+  on(confirmCancelBtn,'click', ()=>{ pendingDeleteDogId = null; if (confirmModal) confirmModal.hidden = true; });
+  on(confirmModal,'click', (e)=>{ if (e.target === confirmModal) { pendingDeleteDogId = null; confirmModal.hidden = true; } });
   on(confirmDeleteBtn,'click', ()=>{
     const dogId = pendingDeleteDogId;
     if (!dogId) { if (confirmModal) confirmModal.hidden = true; return; }
     dogs = dogs.filter(d => d.id !== dogId);
     entries = entries.filter(e => e.dogId !== dogId);
-    save(LS_KEYS.dogs, dogs);
-    save(LS_KEYS.entries, entries);
+    save(LS_KEYS.dogs, dogs); save(LS_KEYS.entries, entries);
     pendingDeleteDogId = null;
     if (confirmModal) confirmModal.hidden = true;
     renderDogs(); renderEntries(); renderChart();
@@ -363,18 +372,18 @@ function initApp(){
   // Dog select change
   on($('#dogSelect'),'change', ()=>{ renderEntries(); renderChart(); });
 
-  // Entries add / duplicate
+  // Entries add / duplicate (date-only)
   on($('#addEntryBtn'),'click', ()=>{
     const dogId=$('#dogSelect')?.value; if(!dogId) return alert('Select a dog first.');
-    const dtVal=$('#dtInput')?.value; if(!dtVal) return alert('Enter date & time.');
-    if(isTooFuture(dtVal)) return alert('Date/time is in the future. Please adjust.');
+    const dtVal=$('#dtInput')?.value; if(!dtVal) return alert('Enter a date.');
+    if(isFutureDate(dtVal)) return alert('Date cannot be in the future.');
     const weight=parseWeight($('#weightInput')?.value); if(weight==null) return alert('Enter a numeric weight in kg (e.g., 21.30).');
     if(weight<MIN_KG||weight>MAX_KG) return alert(`Weight must be between ${MIN_KG.toFixed(2)} and ${MAX_KG.toFixed(2)} kg.`);
     if(!confirmLargeChange(dogId, weight)) return;
     const notes=($('#notesInput')?.value||'').trim();
-    entries.push({ id:crypto.randomUUID(), dogId, dtISO: dtVal.length===16? dtVal+':00': dtVal, weight, notes });
+    entries.push({ id:crypto.randomUUID(), dogId, dtISO: dtVal.slice(0,10), weight, notes });
     save(LS_KEYS.entries, entries);
-    if($('#weightInput')) $('#weightInput').value=''; if($('#notesInput')) $('#notesInput').value=''; if($('#dtInput')) $('#dtInput').value=todayLocalDatetimeValue();
+    if($('#weightInput')) $('#weightInput').value=''; if($('#notesInput')) $('#notesInput').value=''; if($('#dtInput')) $('#dtInput').value=todayLocalDateValue();
     renderEntries(); renderChart();
   });
 
@@ -382,9 +391,9 @@ function initApp(){
     const dogId=$('#dogSelect')?.value; if(!dogId) return alert('Select a dog first.');
     const rows=entries.filter(e=>e.dogId===dogId).sort((a,b)=>b.dtISO.localeCompare(a.dtISO));
     if(rows.length===0) return alert('No previous entry to duplicate.');
-    const last=rows[0]; const dtNow=todayLocalDatetimeValue(); const weight=Number(Number(last.weight).toFixed(2));
+    const last=rows[0]; const dtNow=todayLocalDateValue(); const weight=Number(Number(last.weight).toFixed(2));
     if(!confirmLargeChange(dogId, weight)) return;
-    entries.push({ id:crypto.randomUUID(), dogId, dtISO: dtNow.length===16? dtNow+':00': dtNow, weight, notes:last.notes||'' });
+    entries.push({ id:crypto.randomUUID(), dogId, dtISO: dtNow, weight, notes:last.notes||'' });
     save(LS_KEYS.entries, entries); renderEntries(); renderChart();
   });
 
@@ -438,8 +447,28 @@ function initApp(){
   on($('#aboutClose'),'click', ()=> { const m=$('#aboutModal'); if(m) m.hidden=true; });
   on($('#aboutModal'),'click', (e)=> { if (e.target === $('#aboutModal')) $('#aboutModal').hidden = true; });
 
+  // Profile photo (device-only)
+  const profileImg = $('#profileImg');
+  const stored = localStorage.getItem(LS_KEYS.profile);
+  if (stored && profileImg) profileImg.src = stored;
+  on($('#profileFile'),'change', async (ev)=>{
+    const file = ev.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      localStorage.setItem(LS_KEYS.profile, dataUrl);
+      if (profileImg) profileImg.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+    ev.target.value = '';
+  });
+  on($('#profileClearBtn'),'click', ()=>{
+    localStorage.removeItem(LS_KEYS.profile);
+    if (profileImg) profileImg.src = '';
+  });
+
   // Initial render
-  if ($('#dtInput')) $('#dtInput').value = todayLocalDatetimeValue();
+  if ($('#dtInput')) $('#dtInput').value = todayLocalDateValue();
   renderDogs(); renderEntries(); renderChart();
 }
 

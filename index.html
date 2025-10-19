@@ -11,15 +11,34 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
 </head>
 <body>
-  <header>
-    <h1>🐾 Dog Weight Tracker</h1>
-    <p class="subtitle">Works offline • Exports CSV • No login required</p>
+  <header class="brandHeader">
+    <img src="icons/icon-green-192.png" alt="" class="brandLogo" width="40" height="40">
+    <div class="brandText">
+      <h1>Dog Weight Tracker</h1>
+      <p class="subtitle">Works offline • Exports CSV • No login required</p>
+    </div>
   </header>
 
   <main>
     <!-- Entries moved to the top -->
-    <section class="card">
-      <h2 id="entriesTitle">Entries</h2>
+    <section class="card" id="entriesCard">
+      <div class="row wrap between">
+        <h2 id="entriesTitle" style="margin:0">Entries</h2>
+        <div class="row wrap" id="entriesControls">
+          <label>From <input type="date" id="filterFrom"></label>
+          <label>To <input type="date" id="filterTo"></label>
+          <input type="text" id="filterOwner" placeholder="Owner contains…">
+          <select id="sortSelect" title="Sort">
+            <option value="date_desc">Newest first</option>
+            <option value="date_asc">Oldest first</option>
+            <option value="weight_desc">Heaviest first</option>
+            <option value="weight_asc">Lightest first</option>
+          </select>
+          <button id="clearFiltersBtn" title="Clear filters">Clear</button>
+          <button id="printBtn" title="Print summary">Print</button>
+          <button id="downloadZipBtn" title="Download backup ZIP">Download ZIP</button>
+        </div>
+      </div>
       <div class="tableWrap" style="max-height:400px;overflow:auto">
         <table id="entriesTable">
           <thead>
@@ -36,12 +55,12 @@
           <tbody id="entriesBody"></tbody>
         </table>
       </div>
+      <p class="hint" id="noEntriesHint" hidden>No entries yet — add a dog and a weight below.</p>
     </section>
 
     <!-- Dog management -->
     <section class="card">
       <h2>Dogs</h2>
-
       <div class="row">
         <label for="dogSelect">Select dog</label>
         <select id="dogSelect"></select>

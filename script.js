@@ -59,6 +59,7 @@ const clearAllBtn = document.querySelector('#clearAllBtn');
 const entriesBody = document.querySelector('#entriesBody');
 const entriesTitle = document.querySelector('#entriesTitle');
 const chartCanvas = document.querySelector('#chart');
+const dupLastBtn = document.querySelector('#dupLastBtn');
 
 // Install prompt
 let deferredPrompt = null;
@@ -80,15 +81,11 @@ installBtn?.addEventListener('click', async () => {
   const { outcome } = await deferredPrompt.userChoice;
   deferredPrompt = null;
   installBtn.style.display = 'none';
-  if (outcome !== 'accepted') {
-    // User dismissed; they can still use the browser menu later.
-  }
 });
 
 window.addEventListener('appinstalled', () => {
   if (installBtn) installBtn.style.display = 'none';
 });
-
 
 // ----- Utilities -----------------------------------------------------------
 function todayLocalDatetimeValue() {
@@ -220,6 +217,28 @@ addEntryBtn.addEventListener('click', () => {
   save(LS_KEYS.entries, entries);
 
   weightInput.value = ''; notesInput.value = ''; dtInput.value = todayLocalDatetimeValue();
+  renderEntries(); renderChart();
+});
+
+// >>> NEW: Duplicate last entry --------------------------------------------
+dupLastBtn?.addEventListener('click', () => {
+  const dogId = dogSelect.value;
+  if (!dogId) return alert('Select a dog first.');
+  const rows = entries
+    .filter(e => e.dogId === dogId)
+    .sort((a,b)=> b.dtISO.localeCompare(a.dtISO)); // newest first
+  if (rows.length === 0) return alert('No previous entry to duplicate.');
+
+  const last = rows[0];
+  const dtNow = todayLocalDatetimeValue();
+  entries.push({
+    id: crypto.randomUUID(),
+    dogId,
+    dtISO: dtNow.length === 16 ? dtNow + ':00' : dtNow,
+    weight: Number(Number(last.weight).toFixed(2)),
+    notes: last.notes || ''
+  });
+  save(LS_KEYS.entries, entries);
   renderEntries(); renderChart();
 });
 

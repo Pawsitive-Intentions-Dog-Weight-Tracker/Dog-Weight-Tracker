@@ -1,0 +1,10 @@
+{
+  "name": "Dog Weight Tracker",
+  "short_name": "Dog Weights",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0b1320",
+  "theme_color": "#0f766e",
+  "description": "Record dog weights offline and export CSV."
+}

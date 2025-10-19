@@ -1,10 +1,16 @@
-const CACHE_NAME = 'dog-weight-cache-v3'; // bumped to v3
+const CACHE_NAME = 'dog-weight-cache-v5'; // bumped
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './script.js',
-  './manifest.webmanifest'
+  './manifest.webmanifest',
+  './icons/icon-maskable-192.png',
+  './icons/icon-maskable-512.png',
+  './icons/icon-green-192.png',
+  './icons/icon-green-512.png',
+  './icons/apple-touch-icon-180.png',
+  './icons/favicon-64.png'
 ];
 
 self.addEventListener('install', (event) => {

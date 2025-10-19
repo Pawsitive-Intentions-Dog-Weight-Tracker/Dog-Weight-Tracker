@@ -69,6 +69,27 @@ aboutBtn?.addEventListener('click', ()=> aboutModal.hidden = false);
 aboutClose?.addEventListener('click', ()=> aboutModal.hidden = true);
 aboutModal?.addEventListener('click', (e)=> { if(e.target===aboutModal) aboutModal.hidden = true; });
 
+// --- About & Privacy modal wiring ---
+const aboutBtn   = document.querySelector('#aboutBtn');
+const aboutModal = document.querySelector('#aboutModal');
+const aboutClose = document.querySelector('#aboutClose');
+
+function wireAboutModal() {
+  if (!aboutBtn || !aboutModal) return;
+  aboutBtn.addEventListener('click', () => { aboutModal.hidden = false; });
+  // Close on button
+  aboutClose?.addEventListener('click', () => { aboutModal.hidden = true; });
+  // Close when clicking outside the card
+  aboutModal.addEventListener('click', (e) => {
+    if (e.target === aboutModal) aboutModal.hidden = true;
+  });
+}
+// Run after DOM is ready (covers caching/ordering quirks)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', wireAboutModal);
+} else {
+  wireAboutModal();
+}
 
 // Install prompt
 let deferredPrompt = null;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dog-weight-cache-v12'; // bump
+const CACHE_NAME = 'dog-weight-cache-v14'; // bump
 const ASSETS = [
   './',
   './index.html',

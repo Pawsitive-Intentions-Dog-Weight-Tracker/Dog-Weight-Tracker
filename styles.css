@@ -93,3 +93,20 @@ label.fileLabel input{display:none}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:50}
 .modal-card{background:#fff;border:1px solid var(--line);border-radius:16px;max-width:560px;width:92%;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.15)}
 .modal[hidden]{display:none}
+/* Header with logo */
+.brandHeader{display:flex;gap:12px;align-items:center;justify-content:center;padding:20px 16px;background:linear-gradient(180deg,#ffffff,#f0f4f7);border-bottom:1px solid var(--line)}
+.brandLogo{border-radius:10px}
+.brandText h1{margin:0 0 6px 0;font-size:26px}
+.brandText .subtitle{margin:0;color:var(--muted)}
+
+/* Layout helpers for entries controls */
+.wrap.between{justify-content:space-between;align-items:center}
+#entriesControls > *{margin:4px 4px}
+
+/* Print-friendly */
+@media print{
+  header, .subtitle, #entriesControls, .card h2 + .hint, section.card:not(#entriesCard), footer { display:none !important; }
+  body{background:#fff}
+  #entriesCard{box-shadow:none;border:0;margin:0;padding:0}
+  table{min-width:0}
+}

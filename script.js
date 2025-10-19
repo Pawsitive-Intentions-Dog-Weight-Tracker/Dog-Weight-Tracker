@@ -138,13 +138,34 @@ function renderEntries(){
     const d = getDog(e.dogId);
     const tr = document.createElement('tr');
 
-    const tdDT = document.createElement('td'); tdDT.textContent = formatUKDate(e.dtISO); tr.appendChild(tdDT);
-    const tdOwner = document.createElement('td'); tdOwner.textContent = d?.owner ?? ''; tr.appendChild(tdOwner);
-    const tdBreed = document.createElement('td'); tdBreed.textContent = d?.breed ?? ''; tr.appendChild(tdBreed);
-    const tdW = document.createElement('td'); tdW.textContent = formatKg(e.weight); tr.appendChild(tdW);
-    const tdN = document.createElement('td'); tdN.textContent = e.notes || ''; tr.appendChild(tdN);
+    const tdDT = document.createElement('td');
+    tdDT.dataset.label = 'Date';
+    tdDT.textContent = formatUKDate(e.dtISO);
+    tr.appendChild(tdDT);
+
+    const tdOwner = document.createElement('td');
+    tdOwner.dataset.label = 'Owner';
+    tdOwner.textContent = d?.owner ?? '';
+    tr.appendChild(tdOwner);
+
+    const tdBreed = document.createElement('td');
+    tdBreed.dataset.label = 'Breed';
+    tdBreed.textContent = d?.breed ?? '';
+    tr.appendChild(tdBreed);
+
+    const tdW = document.createElement('td');
+    tdW.dataset.label = 'Weight (kg)';
+    tdW.textContent = formatKg(e.weight);
+    tr.appendChild(tdW);
+
+    const tdN = document.createElement('td');
+    tdN.dataset.label = 'Notes';
+    tdN.textContent = e.notes || '';
+    tr.appendChild(tdN);
 
     const tdA = document.createElement('td');
+    tdA.dataset.label = 'Actions';
+    tdA.className = 'actions';
     const editBtn = document.createElement('button'); editBtn.textContent = 'Edit';
     const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.className='danger'; delBtn.style.marginLeft='6px';
     tdA.appendChild(editBtn); tdA.appendChild(delBtn); tr.appendChild(tdA);
@@ -447,7 +468,7 @@ function initApp(){
   on($('#aboutClose'),'click', ()=> { const m=$('#aboutModal'); if(m) m.hidden=true; });
   on($('#aboutModal'),'click', (e)=> { if (e.target === $('#aboutModal')) $('#aboutModal').hidden = true; });
 
-  // Profile photo (device-only)
+  // Profile photo (device-only) — lives in the Entries header now
   const profileImg = $('#profileImg');
   const stored = localStorage.getItem(LS_KEYS.profile);
   if (stored && profileImg) profileImg.src = stored;

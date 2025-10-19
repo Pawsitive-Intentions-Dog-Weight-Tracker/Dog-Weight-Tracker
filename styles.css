@@ -301,3 +301,12 @@ label.fileLabel { white-space: nowrap; }
 @media (max-width: 640px){
   #openDogModalBtn{ margin-left:0 !important; }
 }
+.profileImgLg{
+  width:140px; height:140px; border-radius:50%;
+  object-fit:cover; border:1px solid var(--line);
+  cursor:pointer;                      /* 👈 shows it’s clickable */
+}
+.profileImgLg:focus{
+  outline:3px solid var(--brand-soft); /* keyboard focus */
+  outline-offset:3px;
+}

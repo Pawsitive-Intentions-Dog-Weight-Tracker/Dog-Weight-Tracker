@@ -84,20 +84,30 @@
       </div>
       <p class="hint">Tip: The selector will show “Dog Name — Owner (Breed)”.</p>
     </section>
-
+<!-- Your Profile (optional, device-only) -->
+<section class="card">
+  <h2>Your Profile (optional)</h2>
+  <div class="row" style="align-items:center">
+    <img id="profileImg" alt="Profile" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid var(--line)">
+    <input id="profileFile" type="file" accept="image/*" style="margin-left:12px">
+    <button id="profileClearBtn" type="button">Remove Photo</button>
+  </div>
+  <p class="hint">This photo is stored on <em>this device only</em> and is not uploaded anywhere.</p>
+</section>
+    
     <!-- Add a measurement -->
     <section class="card">
       <h2>Add Weight</h2>
       <div class="grid2">
-        <div class="row">
-          <label for="dtInput">Date &amp; time</label>
-          <input id="dtInput" type="datetime-local" />
-        </div>
-        <div class="row">
-          <label for="weightInput">Weight (kg)</label>
-          <input id="weightInput" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 21.30" />
-        </div>
-      </div>
+  <div class="row">
+    <label for="dtInput">Date</label>
+    <input id="dtInput" type="date" />
+  </div>
+  <div class="row">
+    <label for="weightInput">Weight (kg)</label>
+    <input id="weightInput" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 21.30" />
+  </div>
+</div>
       <div class="row">
         <label for="notesInput">Notes (optional)</label>
         <input id="notesInput" type="text" placeholder="e.g. after dinner / vet scale" />
@@ -161,6 +171,25 @@
     <div class="confirm-actions">
       <button id="confirmCancelBtn">Cancel</button>
       <button id="confirmDeleteBtn" class="danger">Delete</button>
+    </div>
+  </div>
+</div>
+    <!-- Edit Entry Modal -->
+<div id="editModal" class="modal" hidden>
+  <div class="modal-card">
+    <h3>Edit entry</h3>
+    <div class="row">
+      <label>Date <input type="date" id="editDate"></label>
+    </div>
+    <div class="row">
+      <label>Weight (kg) <input type="number" step="0.01" inputmode="decimal" id="editWeight"></label>
+    </div>
+    <div class="row">
+      <label>Notes <input type="text" id="editNotes" placeholder="optional"></label>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+      <button id="editCancel">Cancel</button>
+      <button id="editSave">Save</button>
     </div>
   </div>
 </div>

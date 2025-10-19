@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dog-weight-cache-v6'; // bumped
+const CACHE_NAME = 'dog-weight-cache-v7'; // bump so all browsers fetch the new JS
 const ASSETS = [
   './',
   './index.html',

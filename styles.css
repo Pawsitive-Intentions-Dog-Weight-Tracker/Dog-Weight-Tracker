@@ -89,3 +89,7 @@ label.fileLabel input{display:none}
   display:inline-block;padding:4px 8px;border-radius:999px;
   background:var(--brand-soft);color:var(--brand);border:1px solid var(--line);
 }
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal-card{background:#fff;border:1px solid var(--line);border-radius:16px;max-width:560px;width:92%;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+.modal[hidden]{display:none}

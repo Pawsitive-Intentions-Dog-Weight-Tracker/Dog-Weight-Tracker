@@ -60,6 +60,36 @@ const entriesBody = document.querySelector('#entriesBody');
 const entriesTitle = document.querySelector('#entriesTitle');
 const chartCanvas = document.querySelector('#chart');
 
+// Install prompt
+let deferredPrompt = null;
+const installBtn = document.querySelector('#installBtn');
+if (installBtn) installBtn.style.display = 'none';
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBtn) installBtn.style.display = 'inline-block';
+});
+
+installBtn?.addEventListener('click', async () => {
+  if (!deferredPrompt) {
+    alert('If you do not see an Install prompt, use your browser menu: "Add to Home Screen" or "Install App".');
+    return;
+  }
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  installBtn.style.display = 'none';
+  if (outcome !== 'accepted') {
+    // User dismissed; they can still use the browser menu later.
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  if (installBtn) installBtn.style.display = 'none';
+});
+
+
 // ----- Utilities -----------------------------------------------------------
 function todayLocalDatetimeValue() {
   const d = new Date(); d.setSeconds(0, 0);

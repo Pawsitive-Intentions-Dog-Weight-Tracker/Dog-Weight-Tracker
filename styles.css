@@ -110,3 +110,14 @@ label.fileLabel input{display:none}
   #entriesCard{box-shadow:none;border:0;margin:0;padding:0}
   table{min-width:0}
 }
+/* Bigger header icon */
+.brandLogo{border-radius:10px; width:64px; height:64px}
+@media (max-width:480px){
+  .brandLogo{width:52px;height:52px}
+}
+
+/* Confirm Delete modal */
+.confirm-modal{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:60}
+.confirm-card{background:#fff;border:1px solid var(--line);border-radius:16px;max-width:520px;width:92%;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+.confirm-modal[hidden]{display:none}
+.confirm-actions{margin-top:12px;display:flex;gap:8px;justify-content:flex-end}

@@ -1,10 +1,30 @@
 // ===== Storage keys and helpers ===========================================
-const LS_KEYS = { dogs: 'dwt_dogs_v2', entries: 'dwt_entries_v2', profile: 'dwt_profile_img' };
+const LS_KEYS = {
+  dogs: 'dwt_dogs_v2',
+  entries: 'dwt_entries_v2',
+  // NEW: map of per-dog photos { [dogId]: dataURL }
+  profileMap: 'dwt_profile_imgs_v2'
+};
 function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
-// ---- Migration from v1 (kept) ----
-(function migrate() {
+// ---- Migration from old single-photo key (optional, best-effort) ---------
+(function migrateSinglePhoto(){
+  const old = localStorage.getItem('dwt_profile_img'); // old single photo
+  if (!old) return;
+  // If there’s a selected dog we’ll attach it there; else attach to first dog.
+  const dogsNow = load(LS_KEYS.dogs, []);
+  if (!dogsNow.length) return; // wait until a dog exists
+  const map = load(LS_KEYS.profileMap, {});
+  if (Object.keys(map).length) return; // already using per-dog map
+  const targetDogId = dogsNow[0].id;
+  map[targetDogId] = old;
+  save(LS_KEYS.profileMap, map);
+  localStorage.removeItem('dwt_profile_img');
+})();
+
+// ---- Migration from v1 data to v2 (kept) ---------------------------------
+(function migrateV1() {
   const oldDogs = JSON.parse(localStorage.getItem('dwt_dogs') || 'null');
   const oldEntries = JSON.parse(localStorage.getItem('dwt_entries') || 'null');
   if (oldDogs && Array.isArray(oldDogs) && !localStorage.getItem(LS_KEYS.dogs)) {
@@ -28,6 +48,7 @@ function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
 let dogs = load(LS_KEYS.dogs, []);
 let entries = load(LS_KEYS.entries, []);
+let profileMap = load(LS_KEYS.profileMap, {}); // { dogId: dataURL }
 let editingId = null;
 
 // One-time normaliser to trim any lingering datetime -> date-only
@@ -52,6 +73,7 @@ function todayLocalDateValue(){
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 }
 function getDog(id){ return dogs.find(d=>d.id===id)||null; }
+function selectedDogId(){ return $('#dogSelect')?.value || null; }
 function formatKg(n){ const x=Number(n); return isFinite(x)?x.toFixed(2):''; }
 function formatUKDate(s){
   if (!s) return '';
@@ -95,6 +117,7 @@ function renderDogs(){
     const opt=document.createElement('option');
     opt.value=''; opt.textContent='— Add a dog first —';
     dogSelect.appendChild(opt);
+    refreshProfilePhoto(); // clears image
     return;
   }
   for(const d of dogs){
@@ -107,6 +130,7 @@ function renderDogs(){
     dogSelect.appendChild(opt);
   }
   if(!dogs.some(d=>d.id===dogSelect.value)){ dogSelect.value=dogs[0].id; }
+  refreshProfilePhoto();
 }
 
 function renderEntries(){
@@ -327,14 +351,21 @@ function createZip(files){
     u32le(cdSize), u32le(cdStart), u16le(0)
   ];
 
-  const blob = new Blob([...chunks, ...CDHunksPlaceholder /* intentionally left for structure */]);
-  // NOTE: Fix placeholder bug—combine cdChunks correctly:
-  return new Blob([...chunks, ...cdChunks, ...EOCD], {type:'application/zip'});
+  const blob = new Blob([...chunks, ...cdChunks, ...EOCD], {type:'application/zip'});
+  return blob;
+}
+
+// ===== Profile photo helpers (per-dog) ====================================
+function refreshProfilePhoto(){
+  const img = $('#profileImg');
+  const dogId = selectedDogId();
+  if (!img || !dogId) { if (img) img.src=''; return; }
+  const dataUrl = profileMap[dogId] || '';
+  img.src = dataUrl;
 }
 
 // ===== App wiring ==========================================================
 function initApp(){
-  // Defaults
   if ($('#dtInput')) $('#dtInput').value = todayLocalDateValue();
 
   // --- Add Dog modal wiring ---
@@ -353,12 +384,10 @@ function initApp(){
     if (dogBreedInput) dogBreedInput.value='';
   }
   on(openDogModalBtn, 'click', openDogModal);
-  // Robust fallback (desktop): delegate in case direct binding is bypassed
   document.addEventListener('click', (e)=>{
     const t = e.target;
     if (t && (t.id === 'openDogModalBtn' || t.closest?.('#openDogModalBtn'))) {
-      e.preventDefault();
-      openDogModal();
+      e.preventDefault(); openDogModal();
     }
   });
 
@@ -375,6 +404,7 @@ function initApp(){
     dogs.push(dog); save(LS_KEYS.dogs, dogs);
     renderDogs();
     const sel = $('#dogSelect'); if (sel) sel.value = dog.id;
+    refreshProfilePhoto();
     renderEntries(); renderChart();
     if (dogModal) dogModal.hidden = true;
   }
@@ -403,16 +433,18 @@ function initApp(){
   on(confirmDeleteBtn,'click', ()=>{
     const dogId = pendingDeleteDogId;
     if (!dogId) { if (confirmModal) confirmModal.hidden = true; return; }
+    // remove dog + its entries + its photo
     dogs = dogs.filter(d => d.id !== dogId);
     entries = entries.filter(e => e.dogId !== dogId);
-    save(LS_KEYS.dogs, dogs); save(LS_KEYS.entries, entries);
+    delete profileMap[dogId];
+    save(LS_KEYS.dogs, dogs); save(LS_KEYS.entries, entries); save(LS_KEYS.profileMap, profileMap);
     pendingDeleteDogId = null;
     if (confirmModal) confirmModal.hidden = true;
     renderDogs(); renderEntries(); renderChart();
   });
 
   // Dog select change
-  on($('#dogSelect'),'change', ()=>{ renderEntries(); renderChart(); });
+  on($('#dogSelect'),'change', ()=>{ refreshProfilePhoto(); renderEntries(); renderChart(); });
 
   // Entries add (date-only)
   on($('#addEntryBtn'),'click', ()=>{
@@ -479,33 +511,33 @@ function initApp(){
   on($('#aboutClose'),'click', ()=> { const m=$('#aboutModal'); if(m) m.hidden=true; });
   on($('#aboutModal'),'click', (e)=> { if (e.target === $('#aboutModal')) $('#aboutModal').hidden = true; });
 
-  // Profile photo (device-only) — lives in the Entries header
+  // Profile photo (per-dog) — click image to change
   const profileImg = $('#profileImg');
-  const stored = localStorage.getItem(LS_KEYS.profile);
-  if (stored && profileImg) profileImg.src = stored;
-  on($('#profileFile'),'change', async (ev)=>{
+  const profileFile = $('#profileFile');
+  refreshProfilePhoto();
+
+  on(profileImg, 'click', ()=> { profileFile?.click(); });
+  on(profileImg, 'keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); profileFile?.click(); } });
+
+  on(profileFile,'change', async (ev)=>{
+    const dogId = selectedDogId(); if (!dogId) { ev.target.value=''; return; }
     const file = ev.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result;
-      localStorage.setItem(LS_KEYS.profile, dataUrl);
-      if (profileImg) profileImg.src = dataUrl;
+      profileMap[dogId] = dataUrl;
+      save(LS_KEYS.profileMap, profileMap);
+      refreshProfilePhoto();
     };
     reader.readAsDataURL(file);
     ev.target.value = '';
   });
   on($('#profileClearBtn'),'click', ()=>{
-    localStorage.removeItem(LS_KEYS.profile);
-    if (profileImg) profileImg.src = '';
+    const dogId = selectedDogId(); if (!dogId) return;
+    delete profileMap[dogId];
+    save(LS_KEYS.profileMap, profileMap);
+    refreshProfilePhoto();
   });
-  // NEW: click/keyboard on photo opens the file picker
-on(profileImg, 'click', () => { profileFile?.click(); });
-on(profileImg, 'keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') {
-    e.preventDefault();
-    profileFile?.click();
-  }
-});
 
   // Initial render
   if ($('#dtInput')) $('#dtInput').value = todayLocalDateValue();

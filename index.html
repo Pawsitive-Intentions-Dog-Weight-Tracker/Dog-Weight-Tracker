@@ -23,7 +23,24 @@
 
   <main>
 
-    <!-- Entries (TOP) with per-dog profile photo controls -->
+    <!-- Profile photo card (TOP) -->
+    <section class="card" id="profileCard">
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:4px 0 8px;">
+        <img
+          id="profileImg"
+          alt="Profile"
+          class="profileImgLg"
+          role="button"
+          tabindex="0"
+          aria-label="Change profile photo"
+        />
+        <input id="profileFile" type="file" accept="image/*" hidden>
+        <button id="profileClearBtn" type="button">Remove photo</button>
+      </div>
+      <p class="hint" style="text-align:center">Tip: Click the photo to set or change it for the currently selected dog.</p>
+    </section>
+
+    <!-- Entries (now BELOW the profile card) -->
     <section class="card" id="entriesCard">
       <div class="row wrap between">
         <h2 id="entriesTitle" style="margin:0">Entries</h2>
@@ -41,20 +58,6 @@
           <button id="printBtn" title="Print summary">Print</button>
           <button id="downloadZipBtn" title="Download backup ZIP">Download ZIP</button>
         </div>
-      </div>
-
-      <!-- Profile photo row (centered, large, clickable) -->
-      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 0;">
-        <img
-          id="profileImg"
-          alt="Profile"
-          class="profileImgLg"
-          role="button"
-          tabindex="0"
-          aria-label="Change profile photo"
-        />
-        <input id="profileFile" type="file" accept="image/*" hidden>
-        <button id="profileClearBtn" type="button">Remove photo</button>
       </div>
 
       <!-- Table -->

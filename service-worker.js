@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dog-weight-cache-v29a'; // bump to refresh cached index.html
+const CACHE_NAME = 'dog-weight-cache-v30'; // bump
 const ASSETS = [
   './',
   './index.html',

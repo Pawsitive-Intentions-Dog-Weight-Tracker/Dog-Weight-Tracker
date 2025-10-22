@@ -2,25 +2,57 @@
 const LS_KEYS = {
   dogs: 'dwt_dogs_v2',
   entries: 'dwt_entries_v2',
-  // NEW: map of per-dog photos { [dogId]: dataURL }
-  profileMap: 'dwt_profile_imgs_v2'
+  profileMap: 'dwt_profile_imgs_v2' // { dogId: dataURL }
 };
+
 function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function safeSave(key, value) {
+  try { save(key, value); return true; }
+  catch (e) {
+    console.warn('Storage full while saving', key, e);
+    alert('Storage is full on this device (likely a large photo). Please remove one or more dog photos (Use "Remove photo") and try again.');
+    return false;
+  }
+}
 
-// ---- Migration from old single-photo key (optional, best-effort) ---------
+// ---- Migration from old single-photo key (guarded) ------------------------
 (function migrateSinglePhoto(){
-  const old = localStorage.getItem('dwt_profile_img'); // old single photo
-  if (!old) return;
-  // If there’s a selected dog we’ll attach it there; else attach to first dog.
-  const dogsNow = load(LS_KEYS.dogs, []);
-  if (!dogsNow.length) return; // wait until a dog exists
-  const map = load(LS_KEYS.profileMap, {});
-  if (Object.keys(map).length) return; // already using per-dog map
-  const targetDogId = dogsNow[0].id;
-  map[targetDogId] = old;
-  save(LS_KEYS.profileMap, map);
-  localStorage.removeItem('dwt_profile_img');
+  try {
+    const old = localStorage.getItem('dwt_profile_img'); // may be a huge dataURL
+    if (!old) return;
+
+    const dogsNow = load(LS_KEYS.dogs, []);
+    if (!dogsNow.length) { localStorage.removeItem('dwt_profile_img'); return; }
+
+    let map = load(LS_KEYS.profileMap, {});
+    if (Object.keys(map).length) { localStorage.removeItem('dwt_profile_img'); return; }
+
+    // If the old image is too large (>350KB), skip migrating to avoid quota issues
+    const approxBytes = (() => {
+      const comma = old.indexOf(',');
+      if (comma === -1) return old.length;
+      const b64 = old.slice(comma + 1);
+      return Math.floor(b64.length * 3 / 4);
+    })();
+    if (approxBytes > 350_000) {
+      console.warn('Skipping migration of large single photo (~bytes):', approxBytes);
+      localStorage.removeItem('dwt_profile_img');
+      return;
+    }
+
+    map[dogsNow[0].id] = old;
+    if (!safeSave(LS_KEYS.profileMap, map)) {
+      // If even that fails, drop the old photo to keep app working.
+      localStorage.removeItem('dwt_profile_img');
+    } else {
+      localStorage.removeItem('dwt_profile_img');
+    }
+  } catch (e) {
+    console.warn('Photo migration failed safely:', e);
+    // Ensure old key is removed so it does not retry every load
+    try { localStorage.removeItem('dwt_profile_img'); } catch {}
+  }
 })();
 
 // ---- Migration from v1 data to v2 (kept) ---------------------------------
@@ -51,7 +83,7 @@ let entries = load(LS_KEYS.entries, []);
 let profileMap = load(LS_KEYS.profileMap, {}); // { dogId: dataURL }
 let editingId = null;
 
-// One-time normaliser to trim any lingering datetime -> date-only
+// One-time normaliser from datetime -> date-only
 (function normaliseEntryDates(){
   let changed = false;
   for (const e of entries) {
@@ -60,7 +92,7 @@ let editingId = null;
       changed = true;
     }
   }
-  if (changed) save(LS_KEYS.entries, entries);
+  if (changed) safeSave(LS_KEYS.entries, entries);
 })();
 
 // ===== Utilities & validation =============================================
@@ -93,6 +125,41 @@ function isFutureDate(dateStr){
 function lastWeightForDog(dogId){ const rows=entries.filter(e=>e.dogId===dogId).sort((a,b)=>b.dtISO.localeCompare(a.dtISO)); return rows.length?Number(rows[0].weight):null; }
 function confirmLargeChange(dogId,newW){ const last=lastWeightForDog(dogId); if(last==null) return true; const diff=Math.abs(newW-last)/Math.max(0.01,last); return diff<=0.20 || confirm(`This differs more than 20% from the last weight (${last.toFixed(2)} kg). Continue?`); }
 
+// ===== Small image helper: resize/compress to ~256px, JPEG 0.82 ===========
+function dataUrlFromFile(file){
+  return new Promise((resolve, reject)=>{
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+function downscaleDataUrl(dataUrl, maxSide=256, quality=0.82){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      const scale = Math.min(1, maxSide / Math.max(width, height));
+      width = Math.max(1, Math.round(width * scale));
+      height = Math.max(1, Math.round(height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      // use JPEG to reduce size; fallback to PNG if needed
+      let out = canvas.toDataURL('image/jpeg', quality);
+      // If still quite big (>300KB), try one more pass lower quality
+      const size = Math.floor((out.split(',')[1]?.length || 0) * 3 / 4);
+      if (size > 300_000) {
+        out = canvas.toDataURL('image/jpeg', 0.7);
+      }
+      resolve(out);
+    };
+    img.onerror = () => resolve(dataUrl); // fallback: return original
+    img.src = dataUrl;
+  });
+}
+
 // ===== Filters/sort state (date-only) =====================================
 const filters = { from: null, to: null, owner: '', sort: 'date_desc' };
 function applyFilters(rows){
@@ -117,7 +184,7 @@ function renderDogs(){
     const opt=document.createElement('option');
     opt.value=''; opt.textContent='— Add a dog first —';
     dogSelect.appendChild(opt);
-    refreshProfilePhoto(); // clears image
+    refreshProfilePhoto();
     return;
   }
   for(const d of dogs){
@@ -172,40 +239,19 @@ function renderEntries(){
     const d = getDog(e.dogId);
     const tr = document.createElement('tr');
 
-    const tdDT = document.createElement('td');
-    tdDT.dataset.label = 'Date';
-    tdDT.textContent = formatUKDate(e.dtISO);
-    tr.appendChild(tdDT);
+    const tdDT = document.createElement('td'); tdDT.dataset.label='Date'; tdDT.textContent = formatUKDate(e.dtISO); tr.appendChild(tdDT);
+    const tdOwner = document.createElement('td'); tdOwner.dataset.label='Owner'; tdOwner.textContent = d?.owner ?? ''; tr.appendChild(tdOwner);
+    const tdBreed = document.createElement('td'); tdBreed.dataset.label='Breed'; tdBreed.textContent = d?.breed ?? ''; tr.appendChild(tdBreed);
+    const tdW = document.createElement('td'); tdW.dataset.label='Weight (kg)'; tdW.textContent = formatKg(e.weight); tr.appendChild(tdW);
+    const tdN = document.createElement('td'); tdN.dataset.label='Notes'; tdN.textContent = e.notes || ''; tr.appendChild(tdN);
 
-    const tdOwner = document.createElement('td');
-    tdOwner.dataset.label = 'Owner';
-    tdOwner.textContent = d?.owner ?? '';
-    tr.appendChild(tdOwner);
-
-    const tdBreed = document.createElement('td');
-    tdBreed.dataset.label = 'Breed';
-    tdBreed.textContent = d?.breed ?? '';
-    tr.appendChild(tdBreed);
-
-    const tdW = document.createElement('td');
-    tdW.dataset.label = 'Weight (kg)';
-    tdW.textContent = formatKg(e.weight);
-    tr.appendChild(tdW);
-
-    const tdN = document.createElement('td');
-    tdN.dataset.label = 'Notes';
-    tdN.textContent = e.notes || '';
-    tr.appendChild(tdN);
-
-    const tdA = document.createElement('td');
-    tdA.dataset.label = 'Actions';
-    tdA.className = 'actions';
+    const tdA = document.createElement('td'); tdA.dataset.label='Actions'; tdA.className='actions';
     const editBtn = document.createElement('button'); editBtn.textContent = 'Edit';
     const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.className='danger'; delBtn.style.marginLeft='6px';
     tdA.appendChild(editBtn); tdA.appendChild(delBtn); tr.appendChild(tdA);
 
     on(editBtn,'click',()=> openEditModal(e.id));
-    on(delBtn,'click',()=>{ if(!confirm('Delete this entry?')) return; entries = entries.filter(x=>x.id!==e.id); save(LS_KEYS.entries, entries); renderEntries(); renderChart(); });
+    on(delBtn,'click',()=>{ if(!confirm('Delete this entry?')) return; entries = entries.filter(x=>x.id!==e.id); safeSave(LS_KEYS.entries, entries); renderEntries(); renderChart(); });
 
     entriesBody.appendChild(tr);
   }
@@ -246,7 +292,7 @@ on($('#editSave'),'click', ()=>{
   e.dtISO = dtVal.slice(0,10);
   e.weight = weight;
   e.notes = ($('#editNotes').value || '').trim();
-  save(LS_KEYS.entries, entries);
+  safeSave(LS_KEYS.entries, entries);
   closeEditModal();
   renderEntries(); renderChart();
 });
@@ -401,7 +447,7 @@ function initApp(){
     const duplicate = dogs.some(d => d.name.toLowerCase()===name.toLowerCase() && (d.owner||'').toLowerCase()===owner.toLowerCase());
     if (duplicate) { alert('That dog (with this owner) already exists.'); return; }
     const dog = { id: crypto.randomUUID(), name, owner, breed };
-    dogs.push(dog); save(LS_KEYS.dogs, dogs);
+    dogs.push(dog); safeSave(LS_KEYS.dogs, dogs);
     renderDogs();
     const sel = $('#dogSelect'); if (sel) sel.value = dog.id;
     refreshProfilePhoto();
@@ -413,7 +459,7 @@ function initApp(){
     on(inp,'keydown', (e)=>{ if(e.key==='Enter') saveDog(); });
   });
 
-  // Dogs — Delete (custom modal already in HTML)
+  // Dogs — Delete (custom modal)
   const confirmModal = $('#confirmModal');
   const confirmDogName = $('#confirmDogName');
   const confirmDeleteBtn = $('#confirmDeleteBtn');
@@ -433,11 +479,10 @@ function initApp(){
   on(confirmDeleteBtn,'click', ()=>{
     const dogId = pendingDeleteDogId;
     if (!dogId) { if (confirmModal) confirmModal.hidden = true; return; }
-    // remove dog + its entries + its photo
     dogs = dogs.filter(d => d.id !== dogId);
     entries = entries.filter(e => e.dogId !== dogId);
     delete profileMap[dogId];
-    save(LS_KEYS.dogs, dogs); save(LS_KEYS.entries, entries); save(LS_KEYS.profileMap, profileMap);
+    safeSave(LS_KEYS.dogs, dogs); safeSave(LS_KEYS.entries, entries); safeSave(LS_KEYS.profileMap, profileMap);
     pendingDeleteDogId = null;
     if (confirmModal) confirmModal.hidden = true;
     renderDogs(); renderEntries(); renderChart();
@@ -456,7 +501,7 @@ function initApp(){
     if(!confirmLargeChange(dogId, weight)) return;
     const notes=($('#notesInput')?.value||'').trim();
     entries.push({ id:crypto.randomUUID(), dogId, dtISO: dtVal.slice(0,10), weight, notes });
-    save(LS_KEYS.entries, entries);
+    safeSave(LS_KEYS.entries, entries);
     if($('#weightInput')) $('#weightInput').value=''; if($('#notesInput')) $('#notesInput').value=''; if($('#dtInput')) $('#dtInput').value=todayLocalDateValue();
     renderEntries(); renderChart();
   });
@@ -522,20 +567,26 @@ function initApp(){
   on(profileFile,'change', async (ev)=>{
     const dogId = selectedDogId(); if (!dogId) { ev.target.value=''; return; }
     const file = ev.target.files?.[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      profileMap[dogId] = dataUrl;
-      save(LS_KEYS.profileMap, profileMap);
-      refreshProfilePhoto();
-    };
-    reader.readAsDataURL(file);
-    ev.target.value = '';
+    try {
+      const raw = await dataUrlFromFile(file);
+      const small = await downscaleDataUrl(raw, 256, 0.82);
+      profileMap[dogId] = small;
+      if (!safeSave(LS_KEYS.profileMap, profileMap)) {
+        // rollback if failed
+        delete profileMap[dogId];
+      } else {
+        refreshProfilePhoto();
+      }
+    } catch (e) {
+      console.warn('Failed to read/compress image', e);
+    } finally {
+      ev.target.value = '';
+    }
   });
   on($('#profileClearBtn'),'click', ()=>{
     const dogId = selectedDogId(); if (!dogId) return;
     delete profileMap[dogId];
-    save(LS_KEYS.profileMap, profileMap);
+    safeSave(LS_KEYS.profileMap, profileMap);
     refreshProfilePhoto();
   });
 

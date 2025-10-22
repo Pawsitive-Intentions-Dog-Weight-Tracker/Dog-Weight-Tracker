@@ -533,10 +533,13 @@ function initApp(){
     const rows=[...entries].sort((a,b)=> (getDog(a.dogId)?.name??'').localeCompare(getDog(b.dogId)?.name??'') || a.dtISO.localeCompare(b.dtISO));
     download('all-dog-weights.csv', toCsv(rows), 'text/csv');
   });
+
+  // NEW: Backup JSON now includes profileMap, version: 3
   on($('#backupJsonBtn'),'click', ()=>{
-    const payload={ dogs, entries, exportedAt:new Date().toISOString(), version:2 };
+    const payload={ dogs, entries, profileMap, exportedAt:new Date().toISOString(), version:3 };
     download('dog-weight-backup.json', JSON.stringify(payload,null,2), 'application/json');
   });
+
   on($('#downloadZipBtn'),'click', ()=>{
     const dogsJson = JSON.stringify(dogs, null, 2);
     const entriesJson = JSON.stringify(entries, null, 2);
@@ -588,6 +591,32 @@ function initApp(){
     delete profileMap[dogId];
     safeSave(LS_KEYS.profileMap, profileMap);
     refreshProfilePhoto();
+  });
+
+  // NEW: Restore (JSON) handler — supports v3 (with photos) and old v2 (without photos)
+  on($('#restoreJsonInput'),'change', async (ev)=>{
+    const file = ev.target.files?.[0];
+    if(!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data || !Array.isArray(data.dogs) || !Array.isArray(data.entries)) {
+        alert('Invalid backup file.'); return;
+      }
+      dogs = data.dogs;
+      entries = data.entries;
+      profileMap = (data && typeof data.profileMap === 'object' && data.profileMap) ? data.profileMap : {};
+      if (!safeSave(LS_KEYS.dogs, dogs)) return;
+      if (!safeSave(LS_KEYS.entries, entries)) return;
+      if (!safeSave(LS_KEYS.profileMap, profileMap)) return;
+      renderDogs(); renderEntries(); renderChart(); refreshProfilePhoto();
+      alert('Backup restored on this device.');
+    } catch (e) {
+      console.error('Restore failed', e);
+      alert('Failed to restore backup.');
+    } finally {
+      ev.target.value = '';
+    }
   });
 
   // Initial render

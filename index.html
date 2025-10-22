@@ -11,98 +11,96 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
 </head>
 <body>
-  <header class="brandHeader">
-  <img src="icons/icon-green-512.png" alt="" class="brandLogo">
-  <div class="brandText">
-    <h1>Dog Weight Tracker</h1>
-    <p class="subtitle">Works offline • Exports CSV • No login required</p>
-  </div>
-</header>
 
+  <!-- Brand header with green icon -->
+  <header class="brandHeader">
+    <img src="icons/icon-green-512.png" alt="" class="brandLogo">
+    <div class="brandText">
+      <h1>Dog Weight Tracker</h1>
+      <p class="subtitle">Works offline • Exports CSV • No login required</p>
+    </div>
+  </header>
 
   <main>
-    <!-- Entries moved to the top -->
-    <section class="card" id="entriesCard">
-  <div class="entriesHeaderTop">
-    <!-- Profile pic at very top (centered & bigger) -->
-    <img
-  id="profileImg"
-  alt="Profile"
-  class="profileImgLg"
-  role="button"
-  tabindex="0"
-  aria-label="Change profile photo"
-/>
-    <div class="profileButtons">
-      <label class="fileLabel" style="margin:0">
-        Change photo
-        <input id="profileFile" type="file" accept="image/*" />
-      </label>
-      <button id="profileClearBtn" type="button">Remove</button>
-    </div>
-  </div>
 
-  <div class="row wrap between" style="margin-top:8px">
-    <h2 id="entriesTitle" style="margin:0">Entries</h2>
-    <div class="row wrap" id="entriesControls">
-      <label>From <input type="date" id="filterFrom" placeholder="dd/mm/yyyy"></label>
-      <label>To <input type="date" id="filterTo" placeholder="dd/mm/yyyy"></label>
-      <input type="text" id="filterOwner" placeholder="Owner contains…">
-      <select id="sortSelect" title="Sort">
-        <option value="date_desc">Newest first</option>
-        <option value="date_asc">Oldest first</option>
-        <option value="weight_desc">Heaviest first</option>
-        <option value="weight_asc">Lightest first</option>
-      </select>
-      <button id="clearFiltersBtn" title="Clear filters">Clear</button>
-      <button id="printBtn" title="Print summary">Print</button>
-      <button id="downloadZipBtn" title="Download backup ZIP">Download ZIP</button>
-    </div>
-  </div>
+    <!-- Entries (TOP) with per-dog profile photo controls -->
+    <section class="card" id="entriesCard">
+      <div class="row wrap between">
+        <h2 id="entriesTitle" style="margin:0">Entries</h2>
+        <div class="row wrap" id="entriesControls">
+          <label>From <input type="date" id="filterFrom"></label>
+          <label>To <input type="date" id="filterTo"></label>
+          <input type="text" id="filterOwner" placeholder="Owner contains…">
+          <select id="sortSelect" title="Sort">
+            <option value="date_desc">Newest first</option>
+            <option value="date_asc">Oldest first</option>
+            <option value="weight_desc">Heaviest first</option>
+            <option value="weight_asc">Lightest first</option>
+          </select>
+          <button id="clearFiltersBtn" title="Clear filters">Clear</button>
+          <button id="printBtn" title="Print summary">Print</button>
+          <button id="downloadZipBtn" title="Download backup ZIP">Download ZIP</button>
+        </div>
+      </div>
+
+      <!-- Profile photo row (centered, large, clickable) -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 0;">
+        <img
+          id="profileImg"
+          alt="Profile"
+          class="profileImgLg"
+          role="button"
+          tabindex="0"
+          aria-label="Change profile photo"
+        />
+        <input id="profileFile" type="file" accept="image/*" hidden>
+        <button id="profileClearBtn" type="button">Remove photo</button>
+      </div>
+
+      <!-- Table -->
       <div class="tableWrap" style="max-height:400px;overflow:auto">
         <table id="entriesTable">
           <thead>
             <tr>
-  <th>Date</th>
-  <th>Owner</th>
-  <th>Breed</th>
-  <th>Weight (kg)</th>
-  <th>Notes</th>
-  <th>Actions</th>
-</tr>
+              <th>Date</th>
+              <th>Owner</th>
+              <th>Breed</th>
+              <th>Weight (kg)</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
           </thead>
           <tbody id="entriesBody"></tbody>
         </table>
       </div>
-      <p class="hint" id="noEntriesHint" hidden>No entries yet — add a dog and a weight below.</p>
+      <p class="hint" id="noEntriesHint" hidden>No entries yet — add a weight below.</p>
     </section>
 
-    <!-- Dog management -->
-<section class="card">
-  <h2>Dogs</h2>
-  <div class="row">
-    <label for="dogSelect">Select dog</label>
-    <select id="dogSelect"></select>
-    <button id="deleteDogBtn" type="button" class="danger">Delete Dog</button>
-    <button id="openDogModalBtn" type="button" style="margin-left:auto">Add New Dog</button>
-  </div>
-  <p class="hint">Tip: The selector shows “Dog Name — Owner (Breed)”.</p>
-</section>
+    <!-- Dogs -->
+    <section class="card">
+      <h2>Dogs</h2>
+      <div class="row" style="flex-wrap:wrap;gap:10px">
+        <label for="dogSelect">Select dog</label>
+        <select id="dogSelect"></select>
+        <button id="deleteDogBtn" type="button" class="danger">Delete Dog</button>
+        <button id="openDogModalBtn" type="button">Add New Dog</button>
+      </div>
+      <p class="hint">Tip: The selector shows “Dog Name — Owner (Breed)”.</p>
+    </section>
 
-    
     <!-- Add a measurement -->
     <section class="card">
       <h2>Add Weight</h2>
       <div class="grid2">
-  <div class="row">
-    <label for="dtInput">Date</label>
-    <input id="dtInput" type="date" />
-  </div>
-  <div class="row">
-    <label for="weightInput">Weight (kg)</label>
-    <input id="weightInput" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 21.30" />
-  </div>
-</div>
+        <div class="row">
+          <label for="dtInput">Date</label>
+          <input id="dtInput" type="date" />
+        </div>
+        <div class="row">
+          <label for="weightInput">Weight (kg)</label>
+          <input id="weightInput" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 21.30" />
+        </div>
+      </div>
       <div class="row">
         <label for="notesInput">Notes (optional)</label>
         <input id="notesInput" type="text" placeholder="e.g. after dinner / vet scale" />
@@ -110,7 +108,7 @@
       <button id="addEntryBtn">Add Entry</button>
     </section>
 
-<!-- Trend chart -->
+    <!-- Trend ABOVE export -->
     <section class="card">
       <h2>Trend</h2>
       <div class="tableWrap">
@@ -118,8 +116,8 @@
       </div>
       <p class="hint">Shows the selected dog’s weights over time.</p>
     </section>
-    
-    <!-- Actions -->
+
+    <!-- Data & Export -->
     <section class="card">
       <h2>Data & Export</h2>
       <div class="wrap">
@@ -141,71 +139,72 @@
       <button id="aboutBtn">About & Privacy</button>
     </section>
 
-    <!-- Modal -->
+    <!-- ===== Modals ===== -->
+
+    <!-- Add Dog Modal -->
+    <div id="dogModal" class="modal" hidden>
+      <div class="modal-card">
+        <h3>Add New Dog</h3>
+        <div class="row"><label style="min-width:120px">Dog name</label><input id="dogNameInput" type="text" placeholder="e.g. Raq"></div>
+        <div class="row"><label style="min-width:120px">Owner surname</label><input id="dogOwnerInput" type="text" placeholder="e.g. Yoxall"></div>
+        <div class="row"><label style="min-width:120px">Breed</label><input id="dogBreedInput" type="text" placeholder="e.g. Border Collie"></div>
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+          <button id="dogCancelBtn" type="button">Cancel</button>
+          <button id="dogSaveBtn" type="button">Save Dog</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Entry Modal -->
+    <div id="editModal" class="modal" hidden>
+      <div class="modal-card">
+        <h3>Edit Entry</h3>
+        <div class="row"><label style="min-width:120px">Date</label><input id="editDate" type="date"></div>
+        <div class="row"><label style="min-width:120px">Weight (kg)</label><input id="editWeight" type="number" inputmode="decimal" step="0.01"></div>
+        <div class="row"><label style="min-width:120px">Notes</label><input id="editNotes" type="text" placeholder=""></div>
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+          <button id="editCancel" type="button">Cancel</button>
+          <button id="editSave" type="button">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Delete Dog Modal -->
+    <div id="confirmModal" class="confirm-modal" hidden>
+      <div class="confirm-card">
+        <h3>Delete dog?</h3>
+        <p>
+          Are you sure you want to delete <strong id="confirmDogName">this dog</strong> and
+          <em>all of its entries</em> on this device? This cannot be undone.
+        </p>
+        <div class="confirm-actions">
+          <button id="confirmCancelBtn">Cancel</button>
+          <button id="confirmDeleteBtn" class="danger">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- About Modal -->
     <div id="aboutModal" class="modal" hidden>
       <div class="modal-card">
         <h3>About & Privacy</h3>
         <p><strong>Dog Weight Tracker</strong> stores all data <em>on this device only</em> (LocalStorage).
-          Nothing is sent to a server. Use <em>Backup</em> to move data between devices.</p>
-        <p>Created for class logging: dog name, owner surname, breed, date/time, weight (kg), notes.</p>
+           Nothing is sent to a server. Use <em>Backup</em> to move data between devices.</p>
+        <p>Created for class logging: dog name, owner surname, breed, date, weight (kg), notes.</p>
         <p>To remove data, use <em>Clear ALL Data</em> on this device.</p>
         <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
           <button id="aboutClose">Close</button>
         </div>
       </div>
     </div>
-    <!-- Confirm Delete Dog Modal -->
-<div id="confirmModal" class="confirm-modal" hidden>
-  <div class="confirm-card">
-    <h3>Delete dog?</h3>
-    <p>
-      Are you sure you want to delete <strong id="confirmDogName">this dog</strong> and
-      <em>all of its entries</em> on this device? This cannot be undone.
-    </p>
-    <div class="confirm-actions">
-      <button id="confirmCancelBtn">Cancel</button>
-      <button id="confirmDeleteBtn" class="danger">Delete</button>
-    </div>
-  </div>
-</div>
-    <!-- Edit Entry Modal -->
-<div id="editModal" class="modal" hidden>
-  <div class="modal-card">
-    <h3>Edit entry</h3>
-    <div class="row">
-      <label>Date <input type="date" id="editDate"></label>
-    </div>
-    <div class="row">
-      <label>Weight (kg) <input type="number" step="0.01" inputmode="decimal" id="editWeight"></label>
-    </div>
-    <div class="row">
-      <label>Notes <input type="text" id="editNotes" placeholder="optional"></label>
-    </div>
-    <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
-      <button id="editCancel">Cancel</button>
-      <button id="editSave">Save</button>
-    </div>
-  </div>
-</div>
-    <!-- Add Dog Modal -->
-<div id="dogModal" class="modal" hidden>
-  <div class="modal-card">
-    <h3>Add new dog</h3>
-    <div class="row"><label>Dog name <input id="dogNameInput" type="text" placeholder="e.g. Raq"></label></div>
-    <div class="row"><label>Owner surname <input id="dogOwnerInput" type="text" placeholder="e.g. Yoxall"></label></div>
-    <div class="row"><label>Breed <input id="dogBreedInput" type="text" placeholder="e.g. Border Collie"></label></div>
-    <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
-      <button id="dogCancelBtn" type="button">Cancel</button>
-      <button id="dogSaveBtn" type="button">Save</button>
-    </div>
-  </div>
-</div>
+
   </main>
 
   <footer>
     <p>Offline-capable PWA. Made by you ✨</p>
   </footer>
 
+  <!-- SW + App -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -213,6 +212,6 @@
       });
     }
   </script>
-  <script src="script.js?v=26"></script>
+  <script src="script.js?v=27"></script>
 </body>
 </html>

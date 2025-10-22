@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dog-weight-cache-v29'; // bump
+const CACHE_NAME = 'dog-weight-cache-v29a'; // bump to refresh cached index.html
 const ASSETS = [
   './',
   './index.html',
@@ -12,8 +12,6 @@ const ASSETS = [
   './icons/apple-touch-icon-180.png',
   './icons/favicon-64.png'
 ];
-// (keep the rest of your service worker the same)
-
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));

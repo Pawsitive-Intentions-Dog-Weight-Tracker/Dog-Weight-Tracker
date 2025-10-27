@@ -41,7 +41,48 @@
       <p class="hint" style="text-align:center">Tip: Click the photo to set or change it for the currently selected dog.</p>
     </section>
 
-    <!-- Entries -->
+    <!-- Dogs (selector first so you pick the dog up front) -->
+    <section class="card">
+      <h2>Dogs</h2>
+      <div class="row" style="flex-wrap:wrap;gap:10px">
+        <label for="dogSelect">Select dog</label>
+        <select id="dogSelect"></select>
+        <button id="deleteDogBtn" type="button" class="danger">Delete Dog</button>
+        <button id="openDogModalBtn" type="button">Add New Dog</button>
+      </div>
+      <p class="hint">Tip: The selector shows “Dog Name — Owner (Breed)”.</p>
+    </section>
+
+    <!-- Add a measurement (now immediately after Dogs) -->
+    <section class="card">
+      <h2>Add Weight</h2>
+      <div class="grid2">
+        <div class="row">
+          <label for="dtInput">Date</label>
+          <input id="dtInput" type="date" />
+        </div>
+        <div class="row">
+          <label for="weightInput">Weight (kg)</label>
+          <input id="weightInput" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 21.30" />
+        </div>
+      </div>
+      <div class="row">
+        <label for="notesInput">Notes (optional)</label>
+        <input id="notesInput" type="text" placeholder="e.g. after dinner / vet scale" />
+      </div>
+      <button id="addEntryBtn">Add Entry</button>
+    </section>
+
+    <!-- Trend (above Entries now) -->
+    <section class="card">
+      <h2>Trend</h2>
+      <div class="tableWrap">
+        <canvas id="chart" style="width:100%;height:260px;"></canvas>
+      </div>
+      <p class="hint">Shows the selected dog’s weights over time.</p>
+    </section>
+
+    <!-- Entries (moved BELOW the Trend) -->
     <section class="card" id="entriesCard">
       <div class="row wrap between">
         <h2 id="entriesTitle" style="margin:0">Entries</h2>
@@ -77,47 +118,6 @@
         </table>
       </div>
       <p class="hint" id="noEntriesHint" hidden>No entries yet — add a weight below.</p>
-    </section>
-
-    <!-- Dogs -->
-    <section class="card">
-      <h2>Dogs</h2>
-      <div class="row" style="flex-wrap:wrap;gap:10px">
-        <label for="dogSelect">Select dog</label>
-        <select id="dogSelect"></select>
-        <button id="deleteDogBtn" type="button" class="danger">Delete Dog</button>
-        <button id="openDogModalBtn" type="button">Add New Dog</button>
-      </div>
-      <p class="hint">Tip: The selector shows “Dog Name — Owner (Breed)”.</p>
-    </section>
-
-    <!-- Add a measurement -->
-    <section class="card">
-      <h2>Add Weight</h2>
-      <div class="grid2">
-        <div class="row">
-          <label for="dtInput">Date</label>
-          <input id="dtInput" type="date" />
-        </div>
-        <div class="row">
-          <label for="weightInput">Weight (kg)</label>
-          <input id="weightInput" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 21.30" />
-        </div>
-      </div>
-      <div class="row">
-        <label for="notesInput">Notes (optional)</label>
-        <input id="notesInput" type="text" placeholder="e.g. after dinner / vet scale" />
-      </div>
-      <button id="addEntryBtn">Add Entry</button>
-    </section>
-
-    <!-- Trend -->
-    <section class="card">
-      <h2>Trend</h2>
-      <div class="tableWrap">
-        <canvas id="chart" style="width:100%;height:260px;"></canvas>
-      </div>
-      <p class="hint">Shows the selected dog’s weights over time.</p>
     </section>
 
     <!-- Data & Export -->
@@ -172,7 +172,10 @@
     <div id="confirmModal" class="confirm-modal" hidden>
       <div class="confirm-card">
         <h3>Delete dog?</h3>
-        <p>Are you sure you want to delete <strong id="confirmDogName">this dog</strong> and <em>all of its entries</em> on this device?</p>
+        <p>
+          Are you sure you want to delete <strong id="confirmDogName">this dog</strong> and
+          <em>all of its entries</em> on this device? This cannot be undone.
+        </p>
         <div class="confirm-actions">
           <button id="confirmCancelBtn">Cancel</button>
           <button id="confirmDeleteBtn" class="danger">Delete</button>
@@ -183,7 +186,8 @@
     <div id="aboutModal" class="modal" hidden>
       <div class="modal-card">
         <h3>About & Privacy</h3>
-        <p><strong>Dog Weight Tracker</strong> stores all data <em>on this device only</em> (LocalStorage). Nothing is sent to a server.</p>
+        <p><strong>Dog Weight Tracker</strong> stores all data <em>on this device only</em> (LocalStorage).
+           Nothing is sent to a server. Use <em>Backup</em> to move data between devices.</p>
         <p>To remove data, use <em>Clear ALL Data</em> on this device.</p>
         <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
           <button id="aboutClose">Close</button>
@@ -205,7 +209,7 @@
       });
     }
   </script>
-  <!-- bump to v=30 -->
-  <script src="script.js?v=30"></script>
+  <!-- keep script at v=30 (no JS changes needed for this reorder) -->
+  <script src="script.js?v=31"></script>
 </body>
 </html>
